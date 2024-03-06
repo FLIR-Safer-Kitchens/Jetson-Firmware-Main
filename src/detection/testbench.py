@@ -1,14 +1,19 @@
 # User detection testbench
 # Move to src/ when testing
 
-from user_detection.user_detect import UserDetect
+from detection.user_detect import UserDetect
 from multiprocessing import shared_memory, Lock
-from user_detection import VISIBLE_SHAPE
+from detection import VISIBLE_SHAPE
 import numpy as np
+import logging
 import time
 import cv2
 
+
 def main():
+    # Configure logger
+    logging.basicConfig(level=logging.DEBUG)
+
     # Create array for us to copy to
     frame = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8')
 

@@ -1,5 +1,6 @@
+# Worker that performs user detection
 
-from user_detection import VISIBLE_SHAPE
+from detection import VISIBLE_SHAPE
 import numpy as np
 import time
 import cv2
@@ -47,6 +48,8 @@ def user_detect_worker(mem, lock, stop, errs, detect_ts):
             cv2.waitKey(1)
             time.sleep(10e-3)
             detect_ts.value = time.time()
+
+            # if round(time.time())%10 == 3: 1/0
             # -------------------------------
 
         # Add errors to queue
