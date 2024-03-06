@@ -1,6 +1,6 @@
 # Worker that performs user detection
 
-from detection import VISIBLE_SHAPE
+from constants import VISIBLE_SHAPE
 import numpy as np
 import time
 import cv2

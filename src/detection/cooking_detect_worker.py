@@ -1,6 +1,6 @@
 # Worker that performs cooking detection
 
-from detection import RAW_THERMAL_SHAPE
+from constants import RAW_THERMAL_SHAPE
 import numpy as np
 import time
 import cv2

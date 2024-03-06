@@ -1,9 +1,9 @@
 # User detection testbench
 # Move to src/ when testing
 
-from detection.user_detect import UserDetect
 from multiprocessing import shared_memory, Lock
-from detection import VISIBLE_SHAPE
+from constants import VISIBLE_SHAPE
+from detection import UserDetect
 import numpy as np
 import logging
 import time

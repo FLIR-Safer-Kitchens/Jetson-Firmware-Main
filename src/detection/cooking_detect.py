@@ -1,8 +1,8 @@
 # Cooking detection launcher
 
-from detection.cooking_detect_worker import cooking_detect_worker
-from detection.launcher import Detection
-from multiprocessing import Value
+from .cooking_detect_worker import cooking_detect_worker
+from  multiprocessing import Value
+from .launcher import Detection
 import logging
 
 

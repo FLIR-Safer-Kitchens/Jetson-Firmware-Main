@@ -1,8 +1,8 @@
 # User detection launcher
 
-from detection.user_detect_worker import user_detect_worker
-from detection.launcher import Detection
-from multiprocessing import Value
+from .user_detect_worker import user_detect_worker
+from  multiprocessing import Value
+from .launcher import Detection
 import logging
 
 
