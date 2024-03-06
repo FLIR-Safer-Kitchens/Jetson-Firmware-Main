@@ -1,7 +1,7 @@
 # User detection algorithm
 
+from user_detection.user_detect_worker import user_detect_worker
 from multiprocessing import Process, Queue, Event, Value
-from user_detect_worker import user_detect_worker
 import logging
 
 
@@ -15,7 +15,7 @@ class UserDetect:
         self.worker_proc = None
 
         # Epoch time of last detection
-        self.last_detected = Value('d', 0.0)   
+        self.last_detected = Value('d', 0.0)
 
 
     def running(self):

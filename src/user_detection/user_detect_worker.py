@@ -1,6 +1,8 @@
 
-from ..constants import VISIBLE_SHAPE
+from user_detection import VISIBLE_SHAPE
 import numpy as np
+import time
+import cv2
 
 
 def user_detect_worker(mem, lock, stop, errs, detect_ts):
@@ -15,28 +17,48 @@ def user_detect_worker(mem, lock, stop, errs, detect_ts):
     - detect_ts (multiprocessing.Value (double)): Epoch timestamp of last detection
     """
 
+    # === Setup ===
     try:
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
 
         # Create array for us to copy to
         frame = np.empty_like(frame_src)
-    
+
+        cv2.namedWindow("test", cv2.WINDOW_NORMAL) # For debugging. delete me
+
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
-        raise
+        return
 
+    # === Loop ===
     while not stop.is_set():
         try:
             # Copy frame from shared memory
             lock.acquire(True)
             frame = frame_src.copy()
             lock.release()
-            
-            # TODO: Do stuff with image
-            
+
+            # TODO: Do user detection here
+
+            # -- For debugging. delete me --
+            cv2.imshow("test", frame)
+            cv2.waitKey(1)
+            time.sleep(10e-3)
+            detect_ts.value = time.time()
+            # -------------------------------
+
         # Add errors to queue
         except BaseException as err:
             errs.put(err, False)
-            raise
+            return
+
+    # === Terminate ===
+    try:
+        cv2.destroyWindow("test") # For debugging. delete me
+
+    # Add errors to queue
+    except BaseException as err:
+        errs.put(err, False)
+        return
