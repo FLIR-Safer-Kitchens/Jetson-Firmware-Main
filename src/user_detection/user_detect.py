@@ -2,11 +2,11 @@
 
 from .user_detect_worker import user_detect_worker
 from  multiprocessing import Value
-from .launcher import Detection
+from  launcher import Launcher
 import logging
 
 
-class UserDetect(Detection):
+class UserDetect(Launcher):
     """Class for managing the user detection worker"""
 
     def __init__(self):

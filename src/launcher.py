@@ -4,13 +4,13 @@ from multiprocessing import Process, Queue, Event
 import logging
 
 
-class Detection:
+class Launcher:
     """Class for managing detection workers"""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-        # Multithreading Process object of worker
+        # Process object of worker
         self.worker_proc = None
         
         # Queue to dump exceptions if worker dies
@@ -27,13 +27,13 @@ class Detection:
 
     def start(self, target, args):
         """
-        Start the detection worker
+        Start the  worker
 
         Parameters:
         - target (method): Worker process function
         - args (tuple): Arguments to pass to target
 
-        Notes: Suspend signal and exception queue are passed to target before args
+        Notes: Suspend signal and exception queue are not passed automatically
         """
         
         # Check running process

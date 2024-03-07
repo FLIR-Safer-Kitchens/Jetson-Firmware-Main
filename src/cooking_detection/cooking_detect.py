@@ -1,12 +1,12 @@
 # Cooking detection launcher
 
 from .cooking_detect_worker import cooking_detect_worker
-from  multiprocessing import Value
-from .launcher import Detection
+from multiprocessing import Value
+from launcher import Launcher
 import logging
 
 
-class CookingDetect(Detection):
+class CookingDetect(Launcher):
     """Class for managing the cooking detection worker"""
 
     def __init__(self):
