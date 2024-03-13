@@ -1,3 +1,6 @@
+"""Functions for reading and writing video files"""
+
+from constants import RAW_THERMAL_SHAPE
 import cv2
 
 class Raw16Video:
@@ -28,9 +31,9 @@ class SaveVideo:
 		self.__vid = cv2.VideoWriter(
 			filename=filename,
 			apiPreference=cv2.CAP_FFMPEG,
-			fourcc=cv2.VideoWriter_fourcc(*'XVID'),
-			fps=8.0,
-			frameSize=(160, 120),
+			fourcc=cv2.VideoWriter_fourcc(*'mp4v'),
+			fps=9.0,
+			frameSize=(RAW_THERMAL_SHAPE[1], RAW_THERMAL_SHAPE[0]),
 			params=[cv2.VIDEOWRITER_PROP_IS_COLOR, int(color)],
 		)
 		assert self.__vid.isOpened()

@@ -1,6 +1,6 @@
-import numpy as np
-import cv2
+"""Helper functions for manipulating lepton images"""
 
+import numpy as np
 
 # Temp. Conversion Helpers
 def f2c(f):
@@ -45,7 +45,7 @@ def clip_norm(img, min_val=None, max_val=None):
 
 	# Map limits to 8-bit
 	# Surely there's a function for this
-	img = cv2.multiply(cv2.subtract(img, min_val), 255/(max_val-min_val+0.001))
+	img = np.multiply(np.subtract(img, min_val), 255/(max_val-min_val+0.001))
 	return img.astype('uint8')
 
 
