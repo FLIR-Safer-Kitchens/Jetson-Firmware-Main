@@ -1,11 +1,11 @@
-# Parent class for launching detection workers
+"""Parent class for launching worker processes"""
 
 from multiprocessing import Process, Queue, Event
 import logging
 
 
 class Launcher:
-    """Class for managing detection workers"""
+    """Class for managing worker processes"""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)

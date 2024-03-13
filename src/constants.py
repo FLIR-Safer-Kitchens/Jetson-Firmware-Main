@@ -1,4 +1,4 @@
-# Define Global Constants
+"""Define global constants"""
 
 # Visible image shape (height, width, depth)
 VISIBLE_SHAPE     = (480, 640, 3)
