@@ -1,4 +1,4 @@
-# Cooking detection launcher
+"""Cooking detection launcher"""
 
 from .cooking_detect_worker import cooking_detect_worker
 from multiprocessing import Value

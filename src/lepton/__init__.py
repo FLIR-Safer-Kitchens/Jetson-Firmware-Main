@@ -1,1 +1,1 @@
-# Drivers and basic image processing helpers for Lepton
+"""Drivers and basic image processing helpers for Lepton"""

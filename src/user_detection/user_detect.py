@@ -1,4 +1,4 @@
-# User detection launcher
+"""User detection launcher"""
 
 from .user_detect_worker import user_detect_worker
 from  multiprocessing import Value

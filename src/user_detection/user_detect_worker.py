@@ -1,4 +1,4 @@
-# Worker that performs user detection
+"""Worker that performs user detection"""
 
 from constants import VISIBLE_SHAPE
 import numpy as np
