@@ -33,7 +33,7 @@ class SaveVideo:
 			apiPreference=cv2.CAP_FFMPEG,
 			fourcc=cv2.VideoWriter_fourcc(*'mp4v'),
 			fps=9.0,
-			frameSize=(RAW_THERMAL_SHAPE[1], RAW_THERMAL_SHAPE[0]),
+			frameSize=RAW_THERMAL_SHAPE[::-1],
 			params=[cv2.VIDEOWRITER_PROP_IS_COLOR, int(color)],
 		)
 		assert self.__vid.isOpened()
