@@ -56,6 +56,7 @@ def cooking_detect_worker(mem, lock, stop, errs, hotspot_det, cooking_det):
             tracked_blobs = match_blobs(new_blobs, tracked_blobs)
 
             # Check for hot spots
+            # TODO? Better conditions for hotspots
             hotspot_det.value = len(tracked_blobs) > 0
 
             # Check for cooking
@@ -72,6 +73,7 @@ def cooking_detect_worker(mem, lock, stop, errs, hotspot_det, cooking_det):
 
         # Add errors to queue
         except BaseException as err:
+            1/0
             errs.put(err, False)
             return
 

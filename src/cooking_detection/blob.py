@@ -1,5 +1,6 @@
 """Class for blobs"""
 
+from .theil_sen import theil_sen
 from constants import *
 import numpy as np
 import time
@@ -40,8 +41,9 @@ class Blob:
         self.temp = cv2.mean(thermal_img, self.mask)[0]
 
         # Store position, area, and temperature history
+        self.first_detected = time.time()
         self.history = [{
-            "timestamp" : time.time(),
+            "timestamp" : self.first_detected,
             "centroid"  : self.centroid,
             "area"      : self.area,
             "temp"      : self.temp,
@@ -83,21 +85,51 @@ class Blob:
     # Combine two blobs
     def merge(self, other):
         # Find oldest/youngest blob
-        old, new = sorted([self, other], key=lambda b: b.history[0]["timestamp"])
+        old, new = sorted([self, other], key=lambda b: b.first_detected)
 
-        # Merge variables
+        # Merge properties
         # New object holds the most recent contour, mask, area, temp, etc.
         new.score = min(old.score + 1, BLOB_SCORE_MAX)
         new.color = old.color
-        new.history = old.history + [new.history[-1]]
-
+        new.first_detected = old.first_detected
+        
+        # Enforce history sample rate
+        dt = new.history[-1]["timestamp"] - old.history[-1]["timestamp"]
+        ok = (dt > 1/BLOB_HISTORY_RATE)
+        new.history = old.history + ([new.history[-1]] if ok else [])
+        
+        # Enforce max history depth
+        new.history = new.history[-BLOB_HISTORY_DEPTH:]
+        
         return new
     
 
     # Examine history and determine if the blob is associated with cooking
     def is_cooking(self):
-        # TODO
-        return False
+        temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
+        temp_history = np.array(temp_history)
+
+        # For debugging
+        if time.time() - self.first_detected > 10:
+            filename = f"history_{round(self.first_detected % 1000)}.csv"
+            np.savetxt(filename, temp_history, delimiter = ",")
+
+        # Not enough samples to make a prediction yet
+        if temp_history.shape[0] < BLOB_HISTORY_DEPTH:
+            return False
+        
+        # Find slope using Theil-Sen estimator
+        slope = theil_sen(temp_history[:,0], temp_history[:,1], 1000)
+
+        # There's definitely a more efficent way to compute slope, 
+        # since the dataset barely changes between iterations.
+        # At least skip the computation if we didn't get any new points
+        # TODO: Convert slope to standard units for thresholding
+        # TODO: Calculate blob velocity
+        # TODO: scoring for temp and velocity. Probably not area
+        # TODO: prediction smoothing
+
+        return slope > -2
 
 
     # Draw the blob and its centroid
