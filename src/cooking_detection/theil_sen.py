@@ -18,18 +18,24 @@ def theil_sen(x, y, max_pairs=1000):
     Returns: float
         Theil-Sen estimate of the slope.
     """
-    # Compute all pairwise slopes
-    slopes = (y[:, np.newaxis] - y) / (x[:, np.newaxis] - x)
+    # Compute all pairwise differences
+    x_diff = x[:, np.newaxis] - x
+    y_diff = y[:, np.newaxis] - y
 
-    # Filter out infinite slopes (where x values are identical)
-    finite_slopes = slopes[np.isfinite(slopes)]
+    # Select upper triangle, excluding the diagonal (all zeros)
+    upper_tri_indices = np.triu_indices(len(x), k=1)
+    x_diff = x_diff[upper_tri_indices]
+    y_diff = y_diff[upper_tri_indices]
+
+    # Compute all pairwise slopes
+    slopes = y_diff / x_diff
     
     # Randomly sample slopes if there are too many
-    if max_pairs < len(finite_slopes):
-        np.random.shuffle(finite_slopes)
-        finite_slopes = finite_slopes[:max_pairs]
+    if max_pairs < len(slopes):
+        np.random.shuffle(slopes)
+        slopes = slopes[:max_pairs]
     
     # Compute median slope
-    median_slope = np.median(finite_slopes)
+    median_slope = np.median(slopes)
 
     return median_slope
