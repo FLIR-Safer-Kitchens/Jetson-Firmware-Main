@@ -69,8 +69,7 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
             # ------ For debugging -----------
             three_chan = cv2.merge([clip_norm(frame)]*3)
             for blob in tracked_blobs:
-                if blob.score == BLOB_SCORE_MAX:
-                    blob.draw_blob(three_chan)
+                blob.draw_blob(three_chan)
             cv2.imshow("out", three_chan)
             cv2.waitKey(1)
             # ---------------------------------
@@ -175,10 +174,10 @@ def match_blobs(new_blobs, old_blobs):
             continue
         
         # Decrement score
-        old_blobs[c].score -= 1
+        old_blobs[c].lives -= 1
 
         # Keep unmatched blobs until their scores hit 0
-        if old_blobs[c].score > 0:
+        if old_blobs[c].lives > 0:
             out.append(old_blobs[c])
     
     return out

@@ -42,7 +42,7 @@ def main():
     cv2.namedWindow("dummy",cv2.WINDOW_NORMAL)
 
     # Load lepton video
-    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "Lepton_Capture_6.tiff")))
+    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "demo.tiff")))
 
     try:
         running = False
@@ -69,7 +69,7 @@ def main():
                 elif old and not detected: print("Cooking No Longer Detected")
             
             # Controls
-            k = cv2.waitKey(50)
+            k = cv2.waitKey(25)
             if k == ord('p'):
                 print("stopping worker")
                 running = False

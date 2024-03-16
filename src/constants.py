@@ -8,7 +8,7 @@ RAW_THERMAL_SHAPE = (120, 160) # (height, width)
 RAW_THERMAL_DIAG  = 200 # sqrt(120^2+160^2)
 
 # Blob detection
-BLOB_SCORE_MAX = 5 # score saturation value
+BLOB_LIVES = 3 # Number of frames to retain blob for after it has not been detected
 BLOB_HISTORY_RATE = 2 # number of samples to store per second. Can be float
 BLOB_HISTORY_DEPTH = 30 # Maximum number of history samples to keep
 

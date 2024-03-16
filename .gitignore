@@ -1,4 +1,7 @@
 venv/
-__pycache__/
-*.tiff
 junk/
+
+tests/vids
+*.tiff
+
+__pycache__/

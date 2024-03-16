@@ -11,13 +11,10 @@ class Blob:
     """Characterize and operate on thermal image blobs"""
 
     def __init__(self, contour, thermal_img):
-        # Detection score
-        # Saturating counter
-        # +1 every time object is detected
-        # -1 every time object is not detected
-        self.score = 1
+        # Number of frames to retain blob for 
+        # after it has not been detected
+        self.lives = BLOB_LIVES
 
-        # Cooking score
         # Saturating counter
         # +1 every time cooking is detected
         # -1 every time cooking is not detected
@@ -103,7 +100,6 @@ class Blob:
 
         # Merge properties
         # New object holds the most recent contour, mask, area, temp, etc.
-        new.score = min(old.score + 1, BLOB_SCORE_MAX)
         new.cooking_score = old.cooking_score
         new.__cooking = old.__cooking
         new.color = old.color
@@ -145,22 +141,17 @@ class Blob:
         # Find slope using Theil-Sen estimator
         slope = theil_sen(temp_history[:,0], temp_history[:,1], 1000)
 
-        # There's definitely a more efficent way to compute slope, 
-        # since the dataset barely changes between iterations.
+        # There's definitely a more efficent way to compute slope 
+        # cinsidering the dataset barely changes between iterations.
         # TODO: Convert slope to standard units for thresholding
-        # TODO: Calculate blob velocity
-        # TODO: scoring for temp and velocity. Probably not area
+        # TODO: Calculate blob velocity & add scoring
 
         # Threshold slope
-        cooking = slope > -5
+        cooking = slope > -10
 
         # Update score
-        if cooking:
-            self.cooking_score = min(
-                self.cooking_score+1,
-                COOKING_SCORE_SATURATION)
-        else:
-            self.cooking_score = max(self.cooking_score-1, 0)
+        self.cooking_score = self.cooking_score + (1 if cooking else -1)
+        self.cooking_score = np.clip(self.cooking_score, 0, COOKING_SCORE_SATURATION)
 
         # Update cooking state
         if self.cooking_score >= COOKING_SCORE_THRESH_HIGH:
@@ -175,8 +166,13 @@ class Blob:
 
     # Draw the blob and its centroid
     def draw_blob(self, image):
-        cv2.drawContours(image, [self.contour], -1, tuple(self.color), cv2.FILLED)
-        cv2.circle(image, self.centroid, 1, (0, 0, 255), -1)
+        # Detected in this frame
+        if self.lives == BLOB_LIVES:
+            cv2.drawContours(image, [self.contour], -1, tuple(self.color), cv2.FILLED)
+            if self.is_cooking():
+                cv2.drawContours(image, [self.contour], -1, (0,100,255), 2)
+            cv2.circle(image, self.centroid, 1, (0, 0, 255), -1)
+    
         return image
 
 
