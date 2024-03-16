@@ -166,8 +166,9 @@ def match_blobs(new_blobs, old_blobs):
         else: out.append(new_blobs[i])
 
     # Handle unmatched old blobs
-    for c in range(len(similarities[0])):
-        if -1 in [row[c] for row in similarities]: continue
+    for c in range(len(old_blobs)):
+        if (len(similarities) > c) and (-1 in [row[c] for row in similarities]): 
+            continue
         
         # Decrement score
         old_blobs[c].score -= 1
