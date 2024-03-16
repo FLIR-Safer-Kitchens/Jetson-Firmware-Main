@@ -18,7 +18,7 @@ class CookingDetect(Launcher):
         self.cooking_detected = Value('B', False)
         
 
-    def start(self, raw16_mem, mem_lock):
+    def start(self, raw16_mem, mem_lock, frame_event):
         """
         Start the cooking detection worker
 
@@ -32,6 +32,7 @@ class CookingDetect(Launcher):
             args=(
                 raw16_mem,
                 mem_lock,
+                frame_event,
                 self.suspend_sig,
                 self.exception_queue,
                 self.hotspot_detected,

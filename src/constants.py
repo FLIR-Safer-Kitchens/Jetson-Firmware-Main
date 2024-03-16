@@ -8,9 +8,14 @@ RAW_THERMAL_SHAPE = (120, 160) # (height, width)
 RAW_THERMAL_DIAG  = 200 # sqrt(120^2+160^2)
 
 # Blob detection
-BLOB_SCORE_MAX = 3 # score saturation value
+BLOB_SCORE_MAX = 5 # score saturation value
 BLOB_HISTORY_RATE = 2 # number of samples to store per second. Can be float
 BLOB_HISTORY_DEPTH = 30 # Maximum number of history samples to keep
+
+# Cooking detection
+COOKING_SCORE_SATURATION  = 30
+COOKING_SCORE_THRESH_LOW  = 10
+COOKING_SCORE_THRESH_HIGH = 20
 
 # Blob similarity scoring
 SIM_SCORE_WEIGHTS = (1, 1, 2, 0.5) # (Overlap, distance, temperature, area)

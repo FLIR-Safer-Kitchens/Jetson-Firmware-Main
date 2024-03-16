@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 
 
-def cooking_detect_worker(mem, lock, stop, errs, hotspot_det, cooking_det):
+def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
     """
     Main cooking detection loop
 
@@ -43,6 +43,10 @@ def cooking_detect_worker(mem, lock, stop, errs, hotspot_det, cooking_det):
     # === Loop ===
     while not stop.is_set():
         try:
+            # Check for new frame
+            if not new.is_set(): continue
+            else: new.clear()
+
             # Copy frame from shared memory
             # TODO? should we make an Event for new frames?
             lock.acquire(True)

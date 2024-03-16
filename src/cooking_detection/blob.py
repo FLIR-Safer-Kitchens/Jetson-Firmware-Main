@@ -17,6 +17,17 @@ class Blob:
         # -1 every time object is not detected
         self.score = 1
 
+        # Cooking score
+        # Saturating counter
+        # +1 every time cooking is detected
+        # -1 every time cooking is not detected
+        self.cooking_score = 0
+
+        # Last reult of cooking detection
+        # Use this value when cooking score is 
+        # between high and low thresholds
+        self.__cooking = False
+
         # Generate unique color
         self.color = [0, 255, np.random.randint(0, 256)]
         np.random.shuffle(self.color)
@@ -48,6 +59,9 @@ class Blob:
             "area"      : self.area,
             "temp"      : self.temp,
         }]
+
+        # Flag to indicate when a new point is added to history
+        self.new_hist_data = False
 
 
     # Compare blobs. Return similarity score [0, 1]. 1 is a perfect match
@@ -90,13 +104,17 @@ class Blob:
         # Merge properties
         # New object holds the most recent contour, mask, area, temp, etc.
         new.score = min(old.score + 1, BLOB_SCORE_MAX)
+        new.cooking_score = old.cooking_score
+        new.__cooking = old.__cooking
         new.color = old.color
         new.first_detected = old.first_detected
+        new.new_hist_data = old.new_hist_data
         
         # Enforce history sample rate
         dt = new.history[-1]["timestamp"] - old.history[-1]["timestamp"]
-        ok = (dt > 1/BLOB_HISTORY_RATE)
-        new.history = old.history + ([new.history[-1]] if ok else [])
+        add_new = dt > 1/BLOB_HISTORY_RATE
+        new.history = old.history + ([new.history[-1]] if add_new else [])
+        new.new_hist_data |= add_new
         
         # Enforce max history depth
         new.history = new.history[-BLOB_HISTORY_DEPTH:]
@@ -106,13 +124,19 @@ class Blob:
 
     # Examine history and determine if the blob is associated with cooking
     def is_cooking(self):
+        # No new data, return most recent value
+        if not self.new_hist_data:
+            return self.__cooking
+        else: self.new_hist_data = False
+
+        # Collect temperature history
         temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
         temp_history = np.array(temp_history)
 
         # For debugging
-        if time.time() - self.first_detected > 10:
-            filename = f"history_{round(self.first_detected % 1000)}.csv"
-            np.savetxt(filename, temp_history, delimiter = ",")
+        # if time.time() - self.first_detected > 10:
+        #     filename = f"history_{round(self.first_detected % 1000)}.csv"
+        #     np.savetxt(filename, temp_history, delimiter = ",")
 
         # Not enough samples to make a prediction yet
         if temp_history.shape[0] < BLOB_HISTORY_DEPTH:
@@ -123,13 +147,30 @@ class Blob:
 
         # There's definitely a more efficent way to compute slope, 
         # since the dataset barely changes between iterations.
-        # At least skip the computation if we didn't get any new points
         # TODO: Convert slope to standard units for thresholding
         # TODO: Calculate blob velocity
         # TODO: scoring for temp and velocity. Probably not area
-        # TODO: prediction smoothing
 
-        return slope > -2
+        # Threshold slope
+        cooking = slope > -5
+
+        # Update score
+        if cooking:
+            self.cooking_score = min(
+                self.cooking_score+1,
+                COOKING_SCORE_SATURATION)
+        else:
+            self.cooking_score = max(self.cooking_score-1, 0)
+
+        # Update cooking state
+        if self.cooking_score >= COOKING_SCORE_THRESH_HIGH:
+            self.__cooking = True
+        elif self.cooking_score <= COOKING_SCORE_THRESH_LOW:
+            self.__cooking = False
+        
+        print(slope, self.cooking_score, self.__cooking)
+
+        return self.__cooking
 
 
     # Draw the blob and its centroid
