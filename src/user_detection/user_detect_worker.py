@@ -5,8 +5,7 @@ import numpy as np
 import time
 import cv2
 
-
-def user_detect_worker(mem, lock, stop, errs, detect_ts):
+def user_detect_worker(mem, lock, new, stop, errs, detect_ts):
     """
     Main user detection loop
 
@@ -36,6 +35,10 @@ def user_detect_worker(mem, lock, stop, errs, detect_ts):
     # === Loop ===
     while not stop.is_set():
         try:
+            # Check for new frame
+            if not new.is_set(): continue
+            else: new.clear()
+
             # Copy frame from shared memory
             lock.acquire(True)
             frame = frame_src.copy()
@@ -47,7 +50,7 @@ def user_detect_worker(mem, lock, stop, errs, detect_ts):
             cv2.imshow("test", frame)
             cv2.waitKey(1)
             time.sleep(10e-3)
-            detect_ts.value = time.time()
+            detect_ts.value = (time.time() % 10) > 5
 
             # if round(time.time())%10 == 3: 1/0
             # -------------------------------
