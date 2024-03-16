@@ -36,7 +36,7 @@ def main():
     cv2.namedWindow("dummy",cv2.WINDOW_NORMAL)
 
     # Load lepton video
-    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "Lepton_Capture_5.tiff")))
+    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "Lepton_Capture_6.tiff")))
 
     try:
         running = False
@@ -44,18 +44,19 @@ def main():
             if cd.running() != running:
                 raise ValueError(f"Expected {running}. Got {cd.running()}.")
 
-            # Grab frame
-            ret, frame = vid.read()
-            if not ret: 
-                raise ValueError("Bad frame")
+            if running:
+                # Grab frame
+                ret, frame = vid.read()
+                if not ret: 
+                    raise ValueError("Bad frame")
 
-            # Write frame to shared memory
-            mem_lock.acquire(block=True)
-            np.copyto(frame_dst, frame)
-
-            k = cv2.waitKey(50)
-            mem_lock.release()
+                # Write frame to shared memory
+                mem_lock.acquire(block=True)
+                np.copyto(frame_dst, frame)
+                mem_lock.release()
             
+            # Controls
+            k = cv2.waitKey(50)
             if k == ord('p'):
                 print("stopping worker")
                 running = False
@@ -78,4 +79,3 @@ def main():
 if __name__ == '__main__':
     main()
     cv2.destroyAllWindows()
-    
