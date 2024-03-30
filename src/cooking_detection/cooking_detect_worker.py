@@ -1,20 +1,24 @@
 """Worker that performs cooking detection"""
 
+from misc.logs import configure_subprocess
 from lepton.utils import *
 from constants import *
 from .blob import Blob
 import numpy as np
+import logging
 import cv2
 
 
-def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
+def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_det):
     """
     Main cooking detection loop
 
     Parameters:
     - mem (multiprocessing.shared_memory): Shared memory location of raw16 image data
     - lock (multiprocessing.Lock): Lock object for shared memory location
+    - new (multiprocessing.Event): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
+    - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
     - hotspot_det (multiprocessing.Value (uchar)): True if a hotspot is detected
     - cooking_det (multiprocessing.Value (uchar)): True if cooking is detected
@@ -22,6 +26,13 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
 
     # === Setup ===
     try:
+        # Create logger 
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        # Set up logs for subprocess
+        configure_subprocess(log)
+
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
 
@@ -34,10 +45,10 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
         # For debugging
         cv2.namedWindow("out", cv2.WINDOW_NORMAL)
                 
-
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
+        logger.exception("Setup Error")
         return
 
     # === Loop ===
@@ -48,7 +59,6 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
             else: new.clear()
 
             # Copy frame from shared memory
-            # TODO? should we make an Event for new frames?
             lock.acquire(True)
             frame = frame_src.copy()
             lock.release()
@@ -76,8 +86,8 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
 
         # Add errors to queue
         except BaseException as err:
-            1/0
             errs.put(err, False)
+            logger.exception("Loop Error")
             return
 
     # === Terminate ===
@@ -87,6 +97,7 @@ def cooking_detect_worker(mem, lock, new, stop, errs, hotspot_det, cooking_det):
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
+        logger.exception("Termination Error")
         return
 
 

@@ -2,7 +2,7 @@
 
 from .cooking_detect_worker import cooking_detect_worker
 from multiprocessing import Value
-from launcher import Launcher
+from misc import Launcher
 import logging
 
 
@@ -18,13 +18,15 @@ class CookingDetect(Launcher):
         self.cooking_detected = Value('B', False)
         
 
-    def start(self, raw16_mem, mem_lock, frame_event):
+    def start(self, raw16_mem, mem_lock, frame_event, log_queue):
         """
         Start the cooking detection worker
 
         Parameters:
         - raw16_mem (multiprocessing.shared_memory): Shared memory location of raw16 frame data
         - mem_lock (multiprocessing.Lock): Lock object for shared memory location
+        - frame_event (multiprocessing.Event): Flag that indicates when a new frame is available
+        - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
         
         super().start(
@@ -34,6 +36,7 @@ class CookingDetect(Launcher):
                 mem_lock,
                 frame_event,
                 self.suspend_sig,
+                log_queue,
                 self.exception_queue,
                 self.hotspot_detected,
                 self.cooking_detected

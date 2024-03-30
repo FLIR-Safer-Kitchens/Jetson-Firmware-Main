@@ -1,24 +1,36 @@
 """Worker that performs user detection"""
 
+from misc.logs import configure_subprocess
 from constants import VISIBLE_SHAPE
 import numpy as np
+import logging
 import time
 import cv2
 
-def user_detect_worker(mem, lock, new, stop, errs, detect_ts):
+
+def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
     """
     Main user detection loop
 
     Parameters:
     - mem (multiprocessing.shared_memory): Shared memory location of visible camera data
     - lock (multiprocessing.Lock): Lock object for shared memory location
+    - new (multiprocessing.Event): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
+    - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
     - detect_ts (multiprocessing.Value (double)): Epoch timestamp of last detection
     """
 
     # === Setup ===
     try:
+        # Create logger 
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        # Set up logs for subprocess
+        configure_subprocess(log)
+
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
 
@@ -30,6 +42,7 @@ def user_detect_worker(mem, lock, new, stop, errs, detect_ts):
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
+        logger.exception("Setup Error")
         return
 
     # === Loop ===
@@ -58,6 +71,7 @@ def user_detect_worker(mem, lock, new, stop, errs, detect_ts):
         # Add errors to queue
         except BaseException as err:
             errs.put(err, False)
+            logger.exception("Loop Error")
             return
 
     # === Terminate ===
@@ -67,4 +81,5 @@ def user_detect_worker(mem, lock, new, stop, errs, detect_ts):
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
+        logger.exception("Termination Error")
         return

@@ -5,18 +5,19 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Event
+from multiprocessing import shared_memory, Lock, Event, Queue
 from cooking_detection import CookingDetect
 from constants import RAW_THERMAL_SHAPE
 from lepton.vid_file import Raw16Video
+from misc import BroadcastEvent
+from misc.logs import *
 import numpy as np
-import logging
 import cv2
 
 
 def main():
     # Configure logger
-    logging.basicConfig(level=logging.DEBUG)
+    configure_main(False, True)
 
     # Create array for us to copy to
     frame = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
@@ -27,11 +28,17 @@ def main():
     # Create lock object for shared memory
     mem_lock = Lock()
 
-    # Create event object for new frames
-    new_frame = Event()
+    # Create master event object for new frames
+    new_frame_parent = BroadcastEvent()
+
+    # Create child event object for reader process
+    new_frame_child = new_frame_parent.get_child()
 
     # Create numpy array backed by shared memory
     frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+
+    # Create queue for workers to log to
+    logging_queue = Queue(10)
 
     # Instantiate launcher
     cd = CookingDetect()
@@ -45,8 +52,16 @@ def main():
     vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "demo.tiff")))
 
     try:
+        # Start thread to emit worker log messages
+        logging_thread = QueueListener(logging_queue)
+        logging_thread.start()
+        
         running = False
         while True:
+            if not logging_thread.running():
+                print("Log listener died. Restarting...")
+                logging_thread.start()
+
             if cd.running() != running:
                 raise ValueError(f"Expected {running}. Got {cd.running()}.")
 
@@ -60,7 +75,7 @@ def main():
                 mem_lock.acquire(block=True)
                 np.copyto(frame_dst, frame)
                 mem_lock.release()
-                new_frame.set()
+                new_frame_parent.set()
 
                 # Print when detection state changes
                 old = detected
@@ -74,11 +89,11 @@ def main():
                 print("stopping worker")
                 running = False
                 cd.stop()
-                new_frame.clear()
+                new_frame_parent.clear()
             elif k == ord('s'):
                 print("starting worker")
                 running = True
-                cd.start(mem, mem_lock, new_frame)
+                cd.start(mem, mem_lock, new_frame_child, logging_queue)
             elif k == ord('q'):
                 print("quitting")
                 raise KeyboardInterrupt
@@ -87,9 +102,10 @@ def main():
         cd.stop()       
         mem.close()
         mem.unlink()
+        logging_thread.stop()
+        cv2.destroyAllWindows()
         raise
 
 
 if __name__ == '__main__':
     main()
-    cv2.destroyAllWindows()

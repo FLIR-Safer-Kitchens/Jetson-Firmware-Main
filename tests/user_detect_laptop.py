@@ -4,18 +4,22 @@
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Event
+from multiprocessing import shared_memory, Lock, Queue
 from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
+from misc import BroadcastEvent
 from arducam import Arducam
+from misc.logs import *
 import numpy as np
-import logging
 import cv2
 
 
 def main():
     # Configure logger
-    logging.basicConfig(level=logging.DEBUG)
+    configure_main(False, True)
+
+    # Create queue for workers to log to
+    logging_queue = Queue(10)
 
     # Create image array in shared memory
     dummy = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8')
@@ -24,8 +28,11 @@ def main():
     # Create lock object for shared memory
     mem_lock = Lock()
 
-    # Create event object for new frames
-    new_frame = Event()
+    # Create master event object for new frames
+    new_frame_parent = BroadcastEvent()
+
+    # Get a different child event for each process that reads frame data
+    new_frame_child = new_frame_parent.get_child()
 
     # Instantiate launchers
     user = UserDetect()
@@ -38,6 +45,10 @@ def main():
     cv2.namedWindow("control", cv2.WINDOW_NORMAL)
 
     try:
+        # Start thread to emit worker log messages
+        logging_thread = QueueListener(logging_queue)
+        logging_thread.start()
+
         running = False
         while True:
             # Check worker status
@@ -50,7 +61,7 @@ def main():
             if detected and not old: print("User Detected")
             elif old and not detected: print("User No Longer Detected")
 
-            # Show reference
+            # Handle commands
             k = cv2.waitKey(10)
             if k == ord('p'):
                 print("stopping workers")
@@ -61,8 +72,8 @@ def main():
             elif k == ord('s'):
                 print("starting worker")
                 running = True
-                cam.start(mem, mem_lock, new_frame)
-                user.start(mem, mem_lock, new_frame)
+                cam.start(mem, mem_lock, new_frame_parent, logging_queue)
+                user.start(mem, mem_lock, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
                 print("quitting")
@@ -74,6 +85,8 @@ def main():
         
         mem.close()
         mem.unlink()
+
+        logging_thread.stop()
         raise
 
 

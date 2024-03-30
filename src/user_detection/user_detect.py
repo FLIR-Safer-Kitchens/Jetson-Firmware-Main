@@ -2,7 +2,7 @@
 
 from .user_detect_worker import user_detect_worker
 from  multiprocessing import Value
-from  launcher import Launcher
+from  misc import Launcher
 import logging
 
 
@@ -17,13 +17,15 @@ class UserDetect(Launcher):
         self.last_detected = Value('d', 0.0)
 
 
-    def start(self, vis_mem, vis_lock, frame_event):
+    def start(self, vis_mem, vis_lock, frame_event, log_queue):
         """
         Start the user detection worker
 
         Parameters:
         - vis_mem (multiprocessing.shared_memory): Shared memory location of visible camera data
         - vis_lock (multiprocessing.Lock): Lock object for shared memory location
+        - frame_event (multiprocessing.Event): Flag that indicates when a new frame is available
+        - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
         
         super().start(
@@ -33,6 +35,7 @@ class UserDetect(Launcher):
                 vis_lock, 
                 frame_event,
                 self.suspend_sig,
+                log_queue,
                 self.exception_queue,
                 self.last_detected
             )

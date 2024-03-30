@@ -6,6 +6,11 @@ import numpy as np
 import time
 import cv2
 
+# Configure logger
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class Blob:
     """Characterize and operate on thermal image blobs"""
@@ -58,7 +63,7 @@ class Blob:
         }]
 
         # Flag to indicate when a new point is added to history
-        self.new_hist_data = False
+        self.new_data_flag = False
 
 
     # Compare blobs. Return similarity score [0, 1]. 1 is a perfect match
@@ -104,13 +109,13 @@ class Blob:
         new.__cooking = old.__cooking
         new.color = old.color
         new.first_detected = old.first_detected
-        new.new_hist_data = old.new_hist_data
+        new.new_data_flag = old.new_data_flag
         
         # Enforce history sample rate
         dt = new.history[-1]["timestamp"] - old.history[-1]["timestamp"]
         add_new = dt > 1/BLOB_HISTORY_RATE
         new.history = old.history + ([new.history[-1]] if add_new else [])
-        new.new_hist_data |= add_new
+        new.new_data_flag |= add_new
         
         # Enforce max history depth
         new.history = new.history[-BLOB_HISTORY_DEPTH:]
@@ -121,9 +126,9 @@ class Blob:
     # Examine history and determine if the blob is associated with cooking
     def is_cooking(self):
         # No new data, return most recent value
-        if not self.new_hist_data:
+        if not self.new_data_flag:
             return self.__cooking
-        else: self.new_hist_data = False
+        else: self.new_data_flag = False
 
         # Collect temperature history
         temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
@@ -159,7 +164,7 @@ class Blob:
         elif self.cooking_score <= COOKING_SCORE_THRESH_LOW:
             self.__cooking = False
         
-        print(slope, self.cooking_score, self.__cooking)
+        logger.debug(f"{slope} {self.cooking_score} {self.__cooking}")
 
         return self.__cooking
 
