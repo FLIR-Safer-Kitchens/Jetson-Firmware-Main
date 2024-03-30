@@ -11,12 +11,17 @@ from misc import BroadcastEvent
 from arducam import Arducam
 from misc.logs import *
 import numpy as np
+import logging
 import cv2
 
 
 def main():
     # Configure logger
     configure_main(False, True)
+
+    # Create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
 
     # Create queue for workers to log to
     logging_queue = Queue(10)
@@ -51,6 +56,11 @@ def main():
 
         running = False
         while True:
+            # Check log listener status
+            if not logging_thread.running():
+                logger.warning("Log listener died. Restarting...")
+                logging_thread.start()
+
             # Check worker status
             if (user.running() != running) or (cam.running() != running):
                 raise ValueError(f"Expected {running}, {running}. Got {user.running()}, {cam.running()}.")
@@ -58,28 +68,32 @@ def main():
             # Print when detection state changes
             old = detected
             detected = user.last_detected.value
-            if detected and not old: print("User Detected")
-            elif old and not detected: print("User No Longer Detected")
+            if detected and not old: logger.info("User Detected")
+            elif old and not detected: logger.info("User No Longer Detected")
 
             # Handle commands
             k = cv2.waitKey(10)
             if k == ord('p'):
-                print("stopping workers")
+                logger.info("stopping workers")
                 running = False
                 user.stop()
                 cam.stop()
             
             elif k == ord('s'):
-                print("starting worker")
+                logger.info("starting worker")
                 running = True
                 cam.start(mem, mem_lock, new_frame_parent, logging_queue)
                 user.start(mem, mem_lock, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
-                print("quitting")
+                logger.info("quitting")
                 raise KeyboardInterrupt
 
+    except KeyboardInterrupt:
+        logger.info("test ended")
     except:
+        logger.exception("")
+    finally:
         user.stop()
         cam.stop()
         
@@ -87,7 +101,6 @@ def main():
         mem.unlink()
 
         logging_thread.stop()
-        raise
 
 
 if __name__ == '__main__':
