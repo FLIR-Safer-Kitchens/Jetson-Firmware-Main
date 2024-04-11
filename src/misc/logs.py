@@ -45,7 +45,7 @@ def configure_subprocess(queue, loglevel=logging.DEBUG):
     - loglevel (int): The root log level for the subprocess. Defaults to DEBUG
     """
 
-    # Set root log level
+    # Set root log level (for this process)
     root = logging.getLogger()
     root.setLevel(loglevel)
 

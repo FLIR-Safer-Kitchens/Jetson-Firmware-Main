@@ -3,7 +3,6 @@
 from multiprocessing import Process, Event, get_context
 import multiprocessing.queues
 from queue import Full, Empty
-import threading
 import logging
 
 
