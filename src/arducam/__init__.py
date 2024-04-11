@@ -1,3 +1,3 @@
-"""Module for reading visible camera data"""
+"""Module for reading visible camera data from Arducam"""
 
 from .polling import Arducam

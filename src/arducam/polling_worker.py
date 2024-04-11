@@ -1,3 +1,5 @@
+"""Worker process for polling Arducam"""
+
 from misc.logs import configure_subprocess
 from constants import VISIBLE_SHAPE
 import numpy as np
@@ -23,7 +25,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
         # Configure subprocess logs
         configure_subprocess(log)
 
-        # Create logger 
+        # Create logger
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
 
@@ -41,8 +43,8 @@ def polling_worker(mem, lock, new, stop, log, errs):
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup error:")
-        return
-    
+        stop.set() # Skip loop
+
     # === Loop ===
     while not stop.is_set():
         try:
@@ -67,15 +69,14 @@ def polling_worker(mem, lock, new, stop, log, errs):
         except BaseException as err:
             errs.put(err, False)
             logger.exception("Loop error:")
-            return
+            stop.set() # Exit loop
 
     # === Terminate ===
     try:
-        new.clear() # Invalidate last data
         vidcap.release()
+        new.clear() # Invalidate last data
 
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination error:")
-        return

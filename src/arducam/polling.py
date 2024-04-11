@@ -1,4 +1,4 @@
-"""User detection launcher"""
+"""Arducam polling launcher"""
 
 from .polling_worker import polling_worker
 from misc import Launcher
@@ -23,7 +23,7 @@ class Arducam(Launcher):
         - frame_event (BroadcastEvent): Master 'new frame' event. Set all child events when a new frame is written
         - log_queue (multiprocessing.Queue): Queue to handle log messages
         """
-        
+
         super().start(
             target=polling_worker,
             args=(
@@ -35,5 +35,3 @@ class Arducam(Launcher):
                 self.exception_queue
             )
          )
-
-
