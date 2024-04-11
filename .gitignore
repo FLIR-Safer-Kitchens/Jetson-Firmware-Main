@@ -1,6 +1,7 @@
 venv/
 junk/
 
+src/streaming/hls/
 tests/vids
 *.tiff
 
