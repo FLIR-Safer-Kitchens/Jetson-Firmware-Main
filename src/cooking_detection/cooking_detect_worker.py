@@ -1,7 +1,7 @@
 """Worker that performs cooking detection"""
 
+from lepton.utils import clip_norm, temp2raw
 from misc.logs import configure_subprocess
-from lepton.utils import *
 from constants import *
 from .blob import Blob
 import numpy as np
@@ -26,7 +26,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 
     # === Setup ===
     try:
-        # Create logger 
+        # Create logger
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
 
@@ -44,12 +44,12 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 
         # For debugging
         cv2.namedWindow("out", cv2.WINDOW_NORMAL)
-                
+
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup Error")
-        return
+        stop.set() # Skip loop
 
     # === Loop ===
     while not stop.is_set():
@@ -65,6 +65,10 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 
             # Find blobs in image
             new_blobs = find_blobs(frame)
+
+            # Filter new blobs
+            good = lambda b: (b.area >= BLOB_MIN_AREA) and (b.temp >= BLOB_MIN_TEMP)
+            new_blobs = [b for b in new_blobs if good(b)]
 
             # Compare and match blobs
             tracked_blobs = match_blobs(new_blobs, tracked_blobs)
@@ -88,7 +92,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
         except BaseException as err:
             errs.put(err, False)
             logger.exception("Loop Error")
-            return
+            stop.set() # Exit loop
 
     # === Terminate ===
     try:
@@ -98,7 +102,6 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination Error")
-        return
 
 
 # Find blobs in image
@@ -106,42 +109,42 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 def find_blobs(frame):
     # Clip cold pixels and convert to 8-bit
     clipped = clip_norm(
-        img = frame, 
-        min_val = 32000, 
-        max_val = 36000
+        img = frame,
+        min_val = temp2raw(TEMP_THRESH_LOW),
+        max_val = temp2raw(TEMP_THRESH_HIGH)
     )
 
     # Bilateral filter
     clipped = cv2.bilateralFilter(
-        src = clipped, 
-        d = 5, 
-        sigmaColor = 30, 
+        src = clipped,
+        d = 5,
+        sigmaColor = 30,
         sigmaSpace = 20
     )
 
     # Adaptive threshold
     thresh = cv2.adaptiveThreshold(
-        src = clipped, 
-        maxValue = 255, 
-        adaptiveMethod = cv2.ADAPTIVE_THRESH_MEAN_C, 
-        thresholdType = cv2.THRESH_BINARY, 
-        blockSize = 35, 
+        src = clipped,
+        maxValue = 255,
+        adaptiveMethod = cv2.ADAPTIVE_THRESH_MEAN_C,
+        thresholdType = cv2.THRESH_BINARY,
+        blockSize = 35,
         C = 0
     )
 
     # Close holes
     kernel  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
     closed = cv2.morphologyEx(
-        src = thresh, 
-        op = cv2.MORPH_CLOSE, 
-        kernel = kernel, 
+        src = thresh,
+        op = cv2.MORPH_CLOSE,
+        kernel = kernel,
         iterations = 2
     )
 
     # Find contours
     contours, heirarchy = cv2.findContours(
-        image = closed, 
-        mode = cv2.RETR_EXTERNAL, 
+        image = closed,
+        mode = cv2.RETR_EXTERNAL,
         method = cv2.CHAIN_APPROX_SIMPLE
     )
 
@@ -153,10 +156,6 @@ def find_blobs(frame):
 # Prune the list of old blobs
 # Add new blobs to list
 def match_blobs(new_blobs, old_blobs):
-    # Filter new blobs
-    good = lambda b: (b.area >= 16) and (b.temp >= 32000)
-    new_blobs = [b for b in new_blobs if good(b)]
-    
     # Compare each new blob with all old blobs
     compare_all_olds = lambda new: [new.compare(old) for old in old_blobs]
     similarities = [compare_all_olds(new) for new in new_blobs]
@@ -168,6 +167,8 @@ def match_blobs(new_blobs, old_blobs):
             match_idx = None
         else:
             match_idx = np.argmax(row)
+
+            # Apply score threshold
             if row[match_idx] < SIM_SCORE_MATCH:
                 match_idx = None
 
@@ -175,20 +176,20 @@ def match_blobs(new_blobs, old_blobs):
         if match_idx != None:
             out.append(new_blobs[i].merge(old_blobs[match_idx]))
             similarities[i][match_idx] = -1 # Mark match
-        
+
         # No good matches, add new blob
         else: out.append(new_blobs[i])
 
     # Handle unmatched old blobs
     for c in range(len(old_blobs)):
-        if (len(similarities) > c) and (-1 in [row[c] for row in similarities]): 
+        if (len(similarities) > c) and (-1 in [row[c] for row in similarities]):
             continue
-        
+
         # Decrement score
         old_blobs[c].lives -= 1
 
         # Keep unmatched blobs until their scores hit 0
         if old_blobs[c].lives > 0:
             out.append(old_blobs[c])
-    
+
     return out

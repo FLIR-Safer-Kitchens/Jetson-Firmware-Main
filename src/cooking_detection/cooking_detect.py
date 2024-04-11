@@ -2,6 +2,7 @@
 
 from .cooking_detect_worker import cooking_detect_worker
 from multiprocessing import Value
+from ctypes import c_bool
 from misc import Launcher
 import logging
 
@@ -14,8 +15,8 @@ class CookingDetect(Launcher):
         self.logger = logging.getLogger(__name__)
 
         # Detection flags
-        self.hotspot_detected = Value('B', False)
-        self.cooking_detected = Value('B', False)
+        self.hotspot_detected = Value(c_bool, False)
+        self.cooking_detected = Value(c_bool, False)
         
 
     def start(self, raw16_mem, mem_lock, frame_event, log_queue):

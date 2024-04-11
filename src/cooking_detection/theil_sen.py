@@ -1,6 +1,5 @@
 """
-Theil-Sen linear regression estimator for 2D data points.
-
+Theil-Sen linear regression estimator for 2D data points.\n
 Very robust to outliers
 """
 
@@ -29,12 +28,12 @@ def theil_sen(x, y, max_pairs=1000):
 
     # Compute all pairwise slopes
     slopes = y_diff / x_diff
-    
+
     # Randomly sample slopes if there are too many
     if max_pairs < len(slopes):
         np.random.shuffle(slopes)
         slopes = slopes[:max_pairs]
-    
+
     # Compute median slope
     median_slope = np.median(slopes)
 
