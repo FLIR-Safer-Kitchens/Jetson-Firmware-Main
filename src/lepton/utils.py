@@ -14,12 +14,12 @@ def c2f(c):
 
 # Radiometry Conversion Helpers (temp units = C)
 # TODO: verify that these are accurate
-# TODO: implement gain
-def temp2raw(temp, gain=None):
+# TODO: Read radiometry app note
+def temp2raw(temp):
 	"""Temperature value (celsius) to 16-bit T-Linear radiometeric value"""
 	return round(100*temp)+27315
 
-def raw2temp(raw, gain=None):
+def raw2temp(raw):
 	"""16-bit T-Linear radiometeric value to temperature value (celsius)"""
 	return (raw-27315)/100
 

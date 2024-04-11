@@ -8,7 +8,7 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 from multiprocessing import shared_memory, Lock, Queue
 from cooking_detection import CookingDetect
 from constants import RAW_THERMAL_SHAPE
-from lepton.vid_file import Raw16Video
+from lepton.file_utils import Raw16Video
 from misc import BroadcastEvent
 from misc.logs import *
 import numpy as np
