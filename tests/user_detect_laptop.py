@@ -67,7 +67,8 @@ def main():
             
             # Print when detection state changes
             old = detected
-            detected = user.last_detected.value
+            # logger.debug(" ".join((str(user.last_detected.value), str(time.time() - user.last_detected.value))))
+            detected = (time.time() - user.last_detected.value) < 5
             if detected and not old: logger.info("User Detected")
             elif old and not detected: logger.info("User No Longer Detected")
 
@@ -86,11 +87,10 @@ def main():
                 user.start(mem, mem_lock, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
-                logger.info("quitting")
                 raise KeyboardInterrupt
 
     except KeyboardInterrupt:
-        logger.info("test ended")
+        logger.info("quitting")
     except:
         logger.exception("")
     finally:
@@ -101,6 +101,7 @@ def main():
         mem.unlink()
 
         logging_thread.stop()
+        logger.info("test ended")
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 
 from .user_detect_worker import user_detect_worker
 from  multiprocessing import Value
+from ctypes import c_double
 from  misc import Launcher
 import logging
 
@@ -14,7 +15,7 @@ class UserDetect(Launcher):
         self.logger = logging.getLogger(__name__)
 
         # Epoch time of last detection
-        self.last_detected = Value('d', 0.0)
+        self.last_detected = Value(c_double, 0.0)
 
 
     def start(self, vis_mem, vis_lock, frame_event, log_queue):
