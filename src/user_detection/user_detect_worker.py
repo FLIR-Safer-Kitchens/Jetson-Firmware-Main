@@ -67,8 +67,8 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(True)
-            frame = frame_src.copy()
+            lock.acquire(timeout=0.5)
+            np.copyto(frame, frame_src)
             lock.release()
 
             # Run YOLOv8 tracking on the frame, persisting tracks between frames

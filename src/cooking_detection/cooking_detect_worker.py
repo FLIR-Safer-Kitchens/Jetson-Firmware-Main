@@ -59,8 +59,8 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(True)
-            frame = frame_src.copy()
+            lock.acquire(timeout=0.5)
+            np.copyto(frame, frame_src)
             lock.release()
 
             # Find blobs in image

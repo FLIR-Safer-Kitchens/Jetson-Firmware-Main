@@ -66,8 +66,8 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(True)
-            frame = frame_src.copy()
+            lock.acquire(timeout=0.5)
+            np.copyto(frame, frame_src)
             lock.release()
 
             # Normalize & colorize frame
