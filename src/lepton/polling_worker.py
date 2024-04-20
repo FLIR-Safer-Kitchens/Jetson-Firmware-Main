@@ -51,7 +51,9 @@ def polling_worker(mem, lock, new, stop, log, errs):
             # Grab frame
             ret, frame = lep.read()
             if ret: last_good_frame = time.time()
-            else: assert (time.time() - last_good_frame) < 1.0, "Camera connection timed out"
+            else: 
+                assert (time.time() - last_good_frame) < 1.0, "Camera connection timed out"
+                continue
 
             # Copy frame to shared memory
             lock.acquire(True)
