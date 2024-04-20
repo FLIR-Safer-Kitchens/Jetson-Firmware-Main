@@ -60,7 +60,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
                 frame.resize(VISIBLE_SHAPE)
 
             # Copy frame to shared memory
-            lock.acquire(True)
+            lock.acquire(timeout=0.5)
             np.copyto(frame_dst, frame)
             lock.release()
 
