@@ -29,10 +29,7 @@ class PureThermalUVC:
         # Ctypes wrapper for frame queue
         self.frame_queue_struct = QueueStruct(self.frame_queue)
 
-        # Define pointers to structs
-        self.ctx  = POINTER(uvc_context)()
-        self.dev  = POINTER(uvc_device)()
-        self.devh = POINTER(uvc_device_handle)()
+        # Create pointer for stream control object
         self.ctrl = uvc_stream_ctrl()
 
 
@@ -40,7 +37,7 @@ class PureThermalUVC:
         """Connects to PureThermal board and opens the raw-16 video stream"""
 
         # Check for open stream
-        if any([ptr != None for ptr in (self.ctx, self.dev, self.devh)]):
+        if any([hasattr(self, ptr) for ptr in ('ctx', 'dev', 'devh')]):
             self.logger.warning("A stream is already open, call stop_stream() first")
             return
 
@@ -49,28 +46,36 @@ class PureThermalUVC:
             self.frame_queue.get_nowait()
 
         # Initialize the libuvc context
+        temp = POINTER(uvc_context)()
         res = self.libuvc.uvc_init(
-            byref(self.ctx), # The location where the context reference should be stored.
-            0                # USB context to use, NULL uses default context
+            byref(temp), # The location where the context reference should be stored.
+            0            # USB context to use, NULL uses default context
         )
         assert res == 0, f"uvc_init error: {res} {uvc_err_msg(res)}"
+        self.ctx = temp
             
         # Find Lepton
+        temp = POINTER(uvc_device)()
         res = self.libuvc.uvc_find_device(
-            self.ctx,        # UVC context in which to search for the camera
-            byref(self.dev), # Reference to the camera, or NULL if not found
-            PT_USB_VID,      # Vendor ID number
-            PT_USB_PID,      # Product ID number
-            0                # Serial number, NULL here
+            self.ctx,    # UVC context in which to search for the camera
+            byref(temp), # Reference to the camera, or NULL if not found
+            PT_USB_VID,  # Vendor ID number
+            PT_USB_PID,  # Product ID number
+            0            # Serial number, NULL here
         )
         assert res == 0, f"uvc_find_device error: {res} {uvc_err_msg(res)}"
+        self.dev = temp
+        print(self.ctx)
             
         # Open UVC connection to Lepton
+        temp = POINTER(uvc_device_handle)()
         res = self.libuvc.uvc_open(
-            self.dev,        # Device to open
-            byref(self.devh) # Handle on opened device
+            self.dev,   # Device to open
+            byref(temp) # Handle on opened device
         )
         assert res == 0, f"uvc_open error: {res} {uvc_err_msg(res)}"
+        self.devh = temp
+        print(self.dev)
 
         # Select the format, resolution, and frame rate for the stream
         res = self.libuvc.uvc_get_stream_ctrl_format_size(
@@ -103,16 +108,19 @@ class PureThermalUVC:
             return
 
         # Close the stream, free handle and all streaming resources
-        if self.devh != None:
+        if hasattr(self, 'devh'):
             self.libuvc.uvc_stop_streaming(self.devh)
+            delattr(self, 'devh')
 
         # Release the Lepton
-        if self.dev != None:
+        if hasattr(self, 'dev'):
             self.libuvc.uvc_unref_device(self.dev)
+            delattr(self, 'dev')
             
         # Close the UVC context. Shuts down any active cameras
-        if self.ctx != None:
+        if hasattr(self, 'ctx'):
             self.libuvc.uvc_exit(self.ctx)
+            delattr(self, 'ctx')
 
 
     def read(self):
