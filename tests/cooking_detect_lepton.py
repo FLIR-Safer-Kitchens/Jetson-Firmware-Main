@@ -1,4 +1,4 @@
-"""Cooking detection testbench (.tiff input)"""
+"""Cooking detection testbench (purethermal input)"""
 
 # Add parent directory to the Python path
 import os.path as path
@@ -7,9 +7,9 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 
 from multiprocessing import shared_memory, Lock, Queue
 from cooking_detection import CookingDetect
-from lepton.file_utils import Raw16Video
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
+from lepton.polling import PureThermal
 from misc import BroadcastEvent
 from misc.logs import *
 import numpy as np
@@ -28,14 +28,9 @@ def main():
     # Create queue for workers to log to
     logging_queue = Queue(10)
 
-    # Create array for us to copy to
-    frame = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
-
     # Create image array in shared memory
-    mem = shared_memory.SharedMemory(create=True, size=frame.nbytes)
-
-    # Create numpy array backed by shared memory
-    frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+    dummy = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
+    mem = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
 
     # Create lock object for shared memory
     mem_lock = Lock()
@@ -46,7 +41,8 @@ def main():
     # Create child event object for reader process
     new_frame_child = new_frame_parent.get_child()
 
-    # Instantiate launcher
+    # Instantiate launchers
+    pt = PureThermal()
     cd = CookingDetect()
 
     # Cooking state 
@@ -55,9 +51,6 @@ def main():
     # Instantiate monitor
     monitor = MonitorClient(12347)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
-
-    # Load lepton video
-    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "demo.tiff")))
 
     try:
         # Start thread to emit worker log messages
@@ -72,20 +65,10 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if cd.running() != running:
-                raise ValueError(f"Expected {running}. Got {cd.running()}.")
+            if (cd.running() != running) or (pt.running() != running):
+                raise ValueError(f"Expected {running}. Got {cd.running()}, {pt.running()}.")
 
             if running:
-                # Grab frame
-                ret, frame = vid.read()
-                if not ret: raise KeyboardInterrupt
-
-                # Write frame to shared memory
-                mem_lock.acquire(timeout=0.5)
-                np.copyto(frame_dst, frame)
-                mem_lock.release()
-                new_frame_parent.set()
-
                 # Print when detection state changes
                 old = detected
                 detected = cd.cooking_detected.value
@@ -102,11 +85,13 @@ def main():
                 logger.info("stopping worker")
                 running = False
                 cd.stop()
+                pt.stop()
                 new_frame_parent.clear()
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
                 cd.start(mem, mem_lock, new_frame_child, logging_queue)
+                pt.start(mem, mem_lock, new_frame_parent, logging_queue)
             elif k == ord('q'):
                 logger.info("quitting")
                 raise KeyboardInterrupt
@@ -116,7 +101,8 @@ def main():
     except:
         logger.exception("")
     finally:
-        cd.stop()      
+        cd.stop()    
+        pt.stop()  
         monitor.stop() 
         mem.close()
         mem.unlink()

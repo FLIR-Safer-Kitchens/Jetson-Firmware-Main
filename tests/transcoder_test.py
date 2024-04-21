@@ -81,7 +81,7 @@ def main():
                 cv2.imshow('control', frame)
 
                 # Write frame to shared memory
-                mem_lock.acquire(block=True)
+                mem_lock.acquire(timeout=0.5)
                 np.copyto(frame_dst, frame.astype("uint16"))
                 mem_lock.release()
                 new_frame_parent.set()

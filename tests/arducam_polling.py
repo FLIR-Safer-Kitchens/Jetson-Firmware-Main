@@ -1,11 +1,10 @@
-"""User detection testbench"""
+"""Arducam polling testbench"""
 
 # Add parent directory to the Python path
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 from multiprocessing import shared_memory, Lock, Queue
-from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
 from misc import BroadcastEvent
 from arducam import Arducam
@@ -30,6 +29,12 @@ def main():
     dummy = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8')
     mem = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
 
+    # Create numpy array backed by shared memory
+    frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
+
+    # Create array for us to copy to
+    frame = np.empty_like(frame_src)
+
     # Create lock object for shared memory
     mem_lock = Lock()
 
@@ -40,14 +45,10 @@ def main():
     new_frame_child = new_frame_parent.get_child()
 
     # Instantiate launchers
-    user = UserDetect()
     cam  = Arducam()
 
-    # User detection output
-    detected = False
-
-    # Create dummy window
-    cv2.namedWindow("control", cv2.WINDOW_NORMAL)
+    # Create window to display frame
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     try:
         # Start thread to emit worker log messages
@@ -62,29 +63,32 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if (user.running() != running) or (cam.running() != running):
-                raise ValueError(f"Expected {running}, {running}. Got {user.running()}, {cam.running()}.")
-            
-            # Print when detection state changes
-            old = detected
-            # logger.debug(" ".join((str(user.last_detected.value), str(time.time() - user.last_detected.value))))
-            detected = (time.time() - user.last_detected.value) < 5
-            if detected and not old: logger.info("User Detected")
-            elif old and not detected: logger.info("User No Longer Detected")
+            if (cam.running() != running):
+                raise ValueError(f"Expected {running}. Got {cam.running()}.")
+
+            # Check for new frame
+            if new_frame_child.is_set():
+                new_frame_child.clear()
+
+                # Copy frame from shared memory
+                mem_lock.acquire(timeout=0.5)
+                np.copyto(frame, frame_src)
+                mem_lock.release()
+
+                # Show frame
+                cv2.imshow("frame", frame)
 
             # Handle commands
             k = cv2.waitKey(10)
             if k == ord('p'):
                 logger.info("stopping workers")
                 running = False
-                user.stop()
                 cam.stop()
             
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
                 cam.start(mem, mem_lock, new_frame_parent, logging_queue)
-                user.start(mem, mem_lock, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
                 raise KeyboardInterrupt
@@ -94,7 +98,6 @@ def main():
     except:
         logger.exception("")
     finally:
-        user.stop()
         cam.stop()
         
         mem.close()

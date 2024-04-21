@@ -1,4 +1,4 @@
-"""Cooking detection testbench (.tiff input)"""
+"""Lepton polling testbench"""
 
 # Add parent directory to the Python path
 import os.path as path
@@ -6,10 +6,9 @@ import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
 from multiprocessing import shared_memory, Lock, Queue
-from cooking_detection import CookingDetect
-from lepton.file_utils import Raw16Video
 from constants import RAW_THERMAL_SHAPE
-from misc.monitor import MonitorClient
+from lepton.polling import PureThermal
+from lepton.utils import clip_norm
 from misc import BroadcastEvent
 from misc.logs import *
 import numpy as np
@@ -35,7 +34,10 @@ def main():
     mem = shared_memory.SharedMemory(create=True, size=frame.nbytes)
 
     # Create numpy array backed by shared memory
-    frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+    frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+
+    # Create array for us to copy to
+    raw = np.empty_like(frame_src)
 
     # Create lock object for shared memory
     mem_lock = Lock()
@@ -47,17 +49,10 @@ def main():
     new_frame_child = new_frame_parent.get_child()
 
     # Instantiate launcher
-    cd = CookingDetect()
+    pt = PureThermal()
 
-    # Cooking state 
-    detected = False
-
-    # Instantiate monitor
-    monitor = MonitorClient(12347)
-    cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
-
-    # Load lepton video
-    vid = Raw16Video(path.normpath(path.join(path.dirname(path.abspath(__file__)), 'vids', "demo.tiff")))
+    # Create window
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     try:
         # Start thread to emit worker log messages
@@ -72,41 +67,32 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if cd.running() != running:
-                raise ValueError(f"Expected {running}. Got {cd.running()}.")
+            if pt.running() != running:
+                raise ValueError(f"Expected {running}. Got {pt.running()}.")
 
-            if running:
-                # Grab frame
-                ret, frame = vid.read()
-                if not ret: raise KeyboardInterrupt
+            if running and new_frame_child.is_set():
+                new_frame_child.clear()
 
-                # Write frame to shared memory
+                # Grab frame from shared memory
                 mem_lock.acquire(timeout=0.5)
-                np.copyto(frame_dst, frame)
+                np.copyto(raw, frame_src)
                 mem_lock.release()
-                new_frame_parent.set()
 
-                # Print when detection state changes
-                old = detected
-                detected = cd.cooking_detected.value
-                if detected and not old: logger.info("Cooking Detected")
-                elif old and not detected: logger.info("Cooking No Longer Detected")
-
-                # Display monitor output
-                ret, monitor_frame = monitor.read()
-                if ret: cv2.imshow("monitor", monitor_frame)
+                # Show image
+                color = cv2.applyColorMap(clip_norm(raw), cv2.COLORMAP_INFERNO)
+                cv2.imshow("frame", color)
             
             # Controls
             k = cv2.waitKey(25)
             if k == ord('p'):
                 logger.info("stopping worker")
                 running = False
-                cd.stop()
+                pt.stop()
                 new_frame_parent.clear()
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                cd.start(mem, mem_lock, new_frame_child, logging_queue)
+                pt.start(mem, mem_lock, new_frame_child, logging_queue)
             elif k == ord('q'):
                 logger.info("quitting")
                 raise KeyboardInterrupt
@@ -116,8 +102,7 @@ def main():
     except:
         logger.exception("")
     finally:
-        cd.stop()      
-        monitor.stop() 
+        pt.stop()       
         mem.close()
         mem.unlink()
         logging_thread.stop()
