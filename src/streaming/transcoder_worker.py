@@ -7,7 +7,6 @@ from constants import *
 import numpy as np
 import logging
 import socket
-import time
 import cv2
 import os
 
@@ -44,13 +43,17 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         # Start converting UDP to HLS
+        logger.debug("Starting FFMPEG subprocess")
         transcode_proc = start_transcoder()
+        logger.debug("FFMPEG subprocess started")
 
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup error:")
         stop.set() # Skip loop
+
+    else: logger.debug("Setup complete, starting streaming loop...")
 
     # === Loop ===
     while not stop.is_set():
@@ -105,6 +108,8 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination error:")
+
+    else: logger.debug("Termination routine completed. Exiting...")
 
 
 def start_transcoder():

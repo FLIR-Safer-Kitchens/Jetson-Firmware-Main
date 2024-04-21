@@ -52,14 +52,18 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         tracked_people = dict()
 
         # Load model
+        logger.debug("Loading model file")
         model_dir = os.path.dirname(__file__)
         model = YOLO(os.path.join(model_dir, 'yolov8n.pt'))
+        logger.debug("Model loaded successfully")
 
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup Error")
         stop.set() # Skip loop
+
+    else: logger.debug("Setup complete, starting user detection loop...")
 
     # === Loop ===
     while not stop.is_set():
@@ -73,9 +77,14 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             np.copyto(frame, frame_src)
             lock.release()
 
-            # Run YOLOv8 tracking on the frame, persisting tracks between frames
-            # Classes argument filters class 0 (person)
-            results = model.track(frame, persist=True, classes=0, verbose=False)
+            # Run YOLOv8 tracking on the frame
+            results = model.track(
+                frame,
+                persist=True, # Track objects between frames
+                conf=0.5,     # Confidence threshold
+                classes=0,    # Filter class 0 (person)
+                verbose=False # Do not print to console
+            )
 
             # Extract confidence ratings, bounding boxes, and IDs
             confs = results[0].boxes.conf.double().tolist()
@@ -84,10 +93,9 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             ids   = ids.int().tolist() if hasattr(ids, "tolist") else []
 
             found = set()
-            for i, conf in enumerate(confs):
-                # Threshold confidence
+            for i in range(len(confs)):
                 # Check ids length. New objects are not given an ID at first
-                if (conf < 0.5) or (i >= len(ids)): continue
+                if i >= len(ids): continue
                 else: found.add(ids[i])
 
                 # Matched with existing person
@@ -127,6 +135,7 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         errs.put(err, False)
         logger.exception("Termination Error")
 
+    else: logger.debug("Termination routine completed. Exiting...")
 
 
 class TrackedPerson:

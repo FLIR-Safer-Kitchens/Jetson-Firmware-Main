@@ -2,7 +2,7 @@
 
 from constants import RAW_THERMAL_SHAPE, LIBUVC_DLL_PATH
 from misc.logs import configure_subprocess
-from uvc_stream import PureThermalUVC
+from .uvc_stream import PureThermalUVC
 import numpy as np
 import logging
 import time
@@ -32,18 +32,31 @@ def polling_worker(mem, lock, new, stop, log, errs):
         # Create numpy array backed by shared memory
         frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
 
-        # Create UVC streaming object & start stream
+        # Create UVC streaming object
         lep = PureThermalUVC(LIBUVC_DLL_PATH)
+
+        # Open video stream
+        logger.debug("Connecting to PureThermal")
         lep.start_stream()
 
+        # Wait for first frame
+        start = time.time()
+        while (time.time()-start) < 5: 
+            if lep.read()[0]: break
+        else: 
+            assert False, "Lepton did not send any data"
+        logger.debug("PureThermal connected")
+
         # Timestamp for camera watchdog timer
-        last_good_frame = 0
+        last_good_frame = time.time()
 
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup error:")
         stop.set() # Skip loop
+
+    else: logger.debug("Setup complete, starting polling loop...")
     
     # === Loop ===
     while not stop.is_set():
@@ -78,3 +91,5 @@ def polling_worker(mem, lock, new, stop, log, errs):
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination error:")
+
+    else: logger.debug("Termination routine completed. Exiting...")

@@ -52,6 +52,8 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
         logger.exception("Setup Error")
         stop.set() # Skip loop
 
+    else: logger.debug("Setup complete, starting cooking detection loop...")
+
     # === Loop ===
     while not stop.is_set():
         try:
@@ -101,6 +103,8 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination Error")
+
+    else: logger.debug("Termination routine completed. Exiting...")
 
 
 # Find blobs in image

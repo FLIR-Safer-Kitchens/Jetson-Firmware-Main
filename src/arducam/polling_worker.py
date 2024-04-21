@@ -30,20 +30,24 @@ def polling_worker(mem, lock, new, stop, log, errs):
         logger.setLevel(logging.DEBUG)
 
         # Create video capture object
+        logger.debug("Connecting to Arducam")
         vidcap = cv2.VideoCapture(0)
-        assert vidcap.isOpened()
+        assert check_open(vidcap), "Arducam could not be opened"
+        logger.debug("Arducam connected sucessfully")
 
         # Create numpy array backed by shared memory
         frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
 
         # Timestamp for camera watchdog timer
-        last_good_frame = 0
+        last_good_frame = time.time()
 
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Setup error:")
         stop.set() # Skip loop
+    
+    else: logger.debug("Setup complete, starting polling loop...")
 
     # === Loop ===
     while not stop.is_set():
@@ -82,3 +86,24 @@ def polling_worker(mem, lock, new, stop, log, errs):
     except BaseException as err:
         errs.put(err, False)
         logger.exception("Termination error:")
+
+    else: logger.debug("Termination routine completed. Exiting...")
+
+
+def check_open(vid_cap: cv2.VideoCapture, timeout=3.0):
+    """
+    Check that a videoCapture object is open and sending data
+    
+    Parameters:
+    - vid_cap (cv2.VideoCapture): VideoCapture object to be checked
+    - timeout (float): Maximum time in seconds to wait for the first frame
+    """
+
+    # Check if VideoCapture is opened
+    if not vid_cap.isOpened(): return False
+
+    # Wait for first frame
+    start = time.time()
+    while (time.time()-start) < timeout:
+        if vid_cap.read()[0]: return True
+    else: return False
