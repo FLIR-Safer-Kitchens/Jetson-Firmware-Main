@@ -42,6 +42,7 @@ SIM_SCORE_MIN = 0.1 # Not a match if any individual score is below this threshol
 TEMP_SLOPE_THRESHOLD = -10
 
 # User detection constants
+USER_MIN_CONFIDENCE = 0.5 # Confidence threshold for user detection [0,1]
 USER_TRACKING_TIME_THRESH = 2  # Time in seconds after first detection to consider a person valid
 USER_MOVEMENT_DIST_THRESH = 20 # Pixel distance that a bounding box must move to be considered movement
 USER_MOVEMENT_TIME_THRESH = 15*60 # Maximum time in seconds that a person can stay stationary before being considered invalid

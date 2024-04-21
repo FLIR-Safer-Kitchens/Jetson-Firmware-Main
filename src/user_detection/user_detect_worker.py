@@ -80,10 +80,10 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             # Run YOLOv8 tracking on the frame
             results = model.track(
                 frame,
-                persist=True, # Track objects between frames
-                conf=0.5,     # Confidence threshold
-                classes=0,    # Filter class 0 (person)
-                verbose=False # Do not print to console
+                persist=True,             # Track objects between frames
+                conf=USER_MIN_CONFIDENCE, # Confidence threshold
+                classes=0,                # Filter class 0 (person)
+                verbose=False             # Do not print to console
             )
 
             # Extract confidence ratings, bounding boxes, and IDs
