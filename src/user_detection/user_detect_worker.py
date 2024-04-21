@@ -1,6 +1,7 @@
 """Worker that performs user detection"""
 
 from misc.logs import configure_subprocess
+from misc.monitor import MonitorServer
 from ultralytics import YOLO
 from constants import *
 import numpy as np
@@ -38,6 +39,9 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         ul_logs = logging.getLogger('ultralytics')
         ul_logs.handlers = root.handlers
 
+        # Create a UDP server to send images to for debugging
+        monitor = MonitorServer(12346)
+
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
 
@@ -50,8 +54,6 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         # Load model
         model_dir = os.path.dirname(__file__)
         model = YOLO(os.path.join(model_dir, 'yolov8n.pt'))
-
-        cv2.namedWindow("test", cv2.WINDOW_NORMAL) # For debugging. delete me
 
     # Add errors to queue
     except BaseException as err:
@@ -103,16 +105,12 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             if any([v.valid for v in tracked_people.values()]):
                 detect_ts.value = time.time()
 
-            # -- For debugging. delete me --
+            # Show debug output on monitor
             for k, v in tracked_people.items():
                 color = (0, 255, 0) if v.valid else (0, 0, 255)
                 center = (int(v.center[0]), int(v.center[1]))
                 cv2.circle(frame, center, 10, color, cv2.FILLED)
-           
-            cv2.imshow("test", frame)
-            cv2.waitKey(1)
-            time.sleep(10e-3)
-            # -------------------------------
+            monitor.show(frame)
 
         # Add errors to queue
         except BaseException as err:
@@ -122,7 +120,7 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
 
     # === Terminate ===
     try:
-        cv2.destroyWindow("test") # For debugging. delete me
+        monitor.stop()
 
     # Add errors to queue
     except BaseException as err:

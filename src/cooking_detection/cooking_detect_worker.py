@@ -2,6 +2,7 @@
 
 from lepton.utils import clip_norm, temp2raw
 from misc.logs import configure_subprocess
+from misc.monitor import MonitorServer
 from constants import *
 from .blob import Blob
 import numpy as np
@@ -33,6 +34,9 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
         # Set up logs for subprocess
         configure_subprocess(log)
 
+        # Create a UDP server to send images to for debugging
+        monitor = MonitorServer(12347)
+
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
 
@@ -41,9 +45,6 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 
         # Create list of blobs
         tracked_blobs = []
-
-        # For debugging
-        cv2.namedWindow("out", cv2.WINDOW_NORMAL)
 
     # Add errors to queue
     except BaseException as err:
@@ -80,13 +81,11 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
             # Check for cooking
             cooking_det.value = any(b.is_cooking() for b in tracked_blobs)
 
-            # ------ For debugging -----------
+            # Output to debug monitor
             three_chan = cv2.merge([clip_norm(frame)]*3)
             for blob in tracked_blobs:
                 blob.draw_blob(three_chan)
-            cv2.imshow("out", three_chan)
-            cv2.waitKey(1)
-            # ---------------------------------
+            monitor.show(three_chan)
 
         # Add errors to queue
         except BaseException as err:
@@ -96,7 +95,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
 
     # === Terminate ===
     try:
-        pass
+        monitor.stop()
 
     # Add errors to queue
     except BaseException as err:
