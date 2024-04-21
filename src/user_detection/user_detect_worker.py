@@ -139,12 +139,15 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
 
 
 class TrackedPerson:
-    def __init__(self, bbox):
+    """Class for organizing variables related to a detected person"""
+
+    def __init__(self, bbox): #xyxy
         # Save bounding box center
+        # bbox: (tl_x, tl_y, br_x, br_y). center: (x,y)
         self.center = ( 
             np.mean((bbox[0], bbox[2])), 
             np.mean((bbox[1], bbox[3]))
-        ) # (x, y)
+        )
 
         # First detection timestamp
         self.first_detected = time.time()
@@ -153,17 +156,22 @@ class TrackedPerson:
         self.last_move = self.first_detected
         
         # True if the person is considered valid:
-        # - Has existed for a suffiecently long time
+        # - Has existed for a sufficiently long time
         # - Is not stationary
         self.valid = False
 
-    # Update valid flag
     def update(self, bbox):
+        """
+        Updates the current object with a new bounding box\n
+        Detects any movement between the last bounding box and the new one.\n
+        Sets valid flag
+        """
         # Compute new bbox center
+        # bbox: (tl_x, tl_y, br_x, br_y). center: (x,y)
         new_center = ( 
             np.mean((bbox[0], bbox[2])), 
             np.mean((bbox[1], bbox[3]))
-        ) # (x, y)
+        )
 
         # Detect movement
         dist = np.linalg.norm(np.subtract(self.center, new_center))

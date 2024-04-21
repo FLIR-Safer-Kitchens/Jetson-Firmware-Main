@@ -52,7 +52,7 @@ def configure_subprocess(queue, loglevel=logging.DEBUG):
     # Add handler to root logger
     # Feeds all log messages to queue
     handler = SizeLimitedQueueHandler(queue)
-    root.addHandler(handler)
+    root.handlers = [handler]
 
 
 

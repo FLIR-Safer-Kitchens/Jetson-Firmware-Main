@@ -39,7 +39,7 @@ SIM_SCORE_MATCH = 0.7 # Combined score threshold to declare a match
 SIM_SCORE_MIN = 0.1 # Not a match if any individual score is below this threshold
 
 # Minumim slope for cooking detection
-TEMP_SLOPE_THRESHOLD = -10
+TEMP_SLOPE_THRESHOLD = -0.05
 
 # User detection constants
 USER_MIN_CONFIDENCE = 0.5 # Confidence threshold for user detection [0,1]

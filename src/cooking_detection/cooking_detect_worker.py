@@ -87,7 +87,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
             three_chan = cv2.merge([clip_norm(frame)]*3)
             for blob in tracked_blobs:
                 blob.draw_blob(three_chan)
-            monitor.show(three_chan)
+            monitor.show(three_chan, 100)
 
         # Add errors to queue
         except BaseException as err:
