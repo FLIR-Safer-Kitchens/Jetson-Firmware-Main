@@ -51,3 +51,10 @@ USER_MOVEMENT_TIME_THRESH = 15*60 # Maximum time in seconds that a person can st
 UDP_PORT = 12345
 HLS_DIRECTORY = "C:/Users/sdhla/Documents/GitHub/Capstone/Jetson-Firmware-Main/src/streaming/hls/" # Directory where stream segments and .m3u8 will be stored. Absolute path preferred
 HLS_FILENAME = "thermal.m3u8"
+
+# Alarm board constants
+AVR_BAUD_RATE = 9600 # Baud rate for serial communication
+AVR_USB_VID = 9025 # USB vendor ID for MCU
+AVR_USB_PID = 67 # USB product ID for MCU
+AVR_TIMEOUT = 2 # Timeout in seconds for incoming and outgoing serial communication
+AVR_PING_RETRIES = 3 # Number of times to reattempt communication with mcu after a failed ping
