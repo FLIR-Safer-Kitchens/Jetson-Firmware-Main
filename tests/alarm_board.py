@@ -3,7 +3,7 @@ import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 
-from alarm_board.alarm_board import AlarmBoard
+from misc.alarm import AlarmBoard
 from misc.logs import configure_main
 import logging
 
