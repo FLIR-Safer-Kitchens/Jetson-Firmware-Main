@@ -34,11 +34,6 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
 
-        # Add handler to ultralytics module
-        root = logging.getLogger()
-        ul_logs = logging.getLogger('ultralytics')
-        ul_logs.handlers = root.handlers
-
         # Create a UDP server to send images to for debugging
         monitor = MonitorServer(12346)
 
