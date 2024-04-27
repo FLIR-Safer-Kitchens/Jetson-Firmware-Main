@@ -1,6 +1,6 @@
 """Worker process for polling PureThermal"""
 
-from constants import RAW_THERMAL_SHAPE, LIBUVC_DLL_PATH
+from constants import RAW_THERMAL_SHAPE, LIBUVC_DLL_PATH, PURETHERMAL_TIMEOUT
 from misc.logs import configure_subprocess
 from .uvc_stream import PureThermalUVC
 import numpy as np
@@ -8,7 +8,7 @@ import logging
 import time
 
 
-def polling_worker(mem, lock, new, stop, log, errs):
+def polling_worker(mem, lock, new, stop, log, errs, max_temp):
     """
     Main polling loop for PureThermal Lepton driver
 
@@ -65,7 +65,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
             ret, frame = lep.read()
             if ret: last_good_frame = time.time()
             else: 
-                assert (time.time() - last_good_frame) < 3.0, "Camera connection timed out"
+                assert (time.time() - last_good_frame) < PURETHERMAL_TIMEOUT, "Camera connection timed out"
                 continue
 
             # Copy frame to shared memory
@@ -75,6 +75,9 @@ def polling_worker(mem, lock, new, stop, log, errs):
 
             # Set new frame flag
             new.set()
+
+            # Report maximum temperature
+            max_temp.value = np.max(frame)
 
         # Add errors to queue
         except BaseException as err:

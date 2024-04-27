@@ -1,7 +1,7 @@
 """Worker process for polling Arducam"""
 
+from constants import VISIBLE_SHAPE, ARDUCAM_TIMEOUT
 from misc.logs import configure_subprocess
-from constants import VISIBLE_SHAPE
 import numpy as np
 import logging
 import time
@@ -56,7 +56,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
             ret, frame = vidcap.read()
             if ret: last_good_frame = time.time()
             else: 
-                assert (time.time() - last_good_frame) < 1.0, "Camera connection timed out"
+                assert (time.time() - last_good_frame) < ARDUCAM_TIMEOUT, "Camera connection timed out"
                 continue
 
             # Process frame

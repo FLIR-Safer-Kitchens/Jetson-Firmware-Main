@@ -15,6 +15,13 @@ PT_USB_PID = 0x0100 # Product ID
 # Path to libuvc dll
 LIBUVC_DLL_PATH = "/usr/local/lib/libuvc.so"
 
+# Camera timeouts
+PURETHERMAL_TIMEOUT = 3.0 
+"""(float) Maximum time in seconds to allow the purethermal board to not send a valid frame"""
+
+ARDUCAM_TIMEOUT = 2.0 
+"""(float) Maximum time in seconds to allow the arducam to not send a valid frame """
+
 # Thermal image clipping limits
 TEMP_THRESH_LOW  = 40.0 # degrees C
 TEMP_THRESH_HIGH = 100.0 # degrees C
