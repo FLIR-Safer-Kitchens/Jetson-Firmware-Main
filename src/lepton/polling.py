@@ -13,6 +13,7 @@ class PureThermal(Launcher):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
         
         # Maximum detected temperature
         self.max_temp = Value(c_double, 0.0)

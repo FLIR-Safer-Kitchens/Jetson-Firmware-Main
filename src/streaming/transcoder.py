@@ -11,6 +11,7 @@ class Transcoder(Launcher):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
 
 
     def start(self, raw16_mem, raw16_lock, frame_event, log_queue):

@@ -13,6 +13,7 @@ class UserDetect(Launcher):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
 
         # Epoch time of last detection
         self.last_detected = Value(c_double, 0.0)

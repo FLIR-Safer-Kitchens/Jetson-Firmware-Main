@@ -13,6 +13,7 @@ class CookingDetect(Launcher):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
 
         # Detection flags
         self.hotspot_detected = Value(c_bool, False)

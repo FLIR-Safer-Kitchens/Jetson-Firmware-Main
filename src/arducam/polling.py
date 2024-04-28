@@ -11,6 +11,7 @@ class Arducam(Launcher):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
 
 
     def start(self, vis_mem, vis_lock, frame_event, log_queue):
