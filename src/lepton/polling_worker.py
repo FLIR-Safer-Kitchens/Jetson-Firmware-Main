@@ -3,6 +3,7 @@
 from constants import RAW_THERMAL_SHAPE, LIBUVC_DLL_PATH, PURETHERMAL_TIMEOUT
 from misc.logs import configure_subprocess
 from .uvc_stream import PureThermalUVC
+from lepton.utils import raw2temp
 import numpy as np
 import logging
 import time
@@ -77,7 +78,7 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp):
             new.set()
 
             # Report maximum temperature
-            max_temp.value = np.max(frame)
+            max_temp.value = raw2temp(np.max(frame))
 
         # Add errors to queue
         except BaseException as err:
