@@ -64,7 +64,10 @@ def main():
 
             # Check worker status
             if (cam.running() != running):
-                raise ValueError(f"Expected {running}. Got {cam.running()}.")
+                ret = cam.handle_exceptions()
+                assert ret, "Arducam polling process not recoverable"
+                logger.warning("Attempting to restart Arducam process")
+                cam.start(mem, mem_lock, new_frame_parent, logging_queue)
 
             # Check for new frame
             if new_frame_child.is_set():
@@ -84,6 +87,7 @@ def main():
                 logger.info("stopping workers")
                 running = False
                 cam.stop()
+                assert cam.handle_exceptions(), "Arducam shutdown failed"
             
             elif k == ord('s'):
                 logger.info("starting worker")

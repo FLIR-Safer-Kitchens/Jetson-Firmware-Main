@@ -1,5 +1,9 @@
 """Define global constants"""
 
+# Worker process exception handling
+EXCEPTION_HISTORY_WINDOW = 10 # Duration in seconds to track non fatal errors
+ALLOWABLE_EXCEPTION_COUNT = 2 # Maximum number of nonfatal errors within the history window that will be tolerated before the program exits
+
 # Visible image shape
 VISIBLE_SHAPE = (480, 640, 3) # (height, width, depth)
 
