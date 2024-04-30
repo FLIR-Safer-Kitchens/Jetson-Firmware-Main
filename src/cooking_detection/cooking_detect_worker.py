@@ -76,8 +76,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
             # Compare and match blobs
             tracked_blobs = match_blobs(new_blobs, tracked_blobs)
 
-            # Check for hot spots
-            # TODO? Better conditions for hotspots
+            # Raise flag if there are valid blobs
             hotspot_det.value = len(tracked_blobs) > 0
 
             # Check for cooking

@@ -16,7 +16,7 @@ class CookingDetect(Launcher):
         self.logger.setLevel(logging.DEBUG)
 
         # Detection flags
-        self.hotspot_detected = Value(c_bool, False)
+        self.blobs_detected   = Value(c_bool, False)
         self.cooking_detected = Value(c_bool, False)
         
 
@@ -40,7 +40,7 @@ class CookingDetect(Launcher):
                 self.suspend_sig,
                 log_queue,
                 self.exception_queue,
-                self.hotspot_detected,
+                self.blobs_detected,
                 self.cooking_detected
             )
         )

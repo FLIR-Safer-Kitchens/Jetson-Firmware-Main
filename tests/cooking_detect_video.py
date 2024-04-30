@@ -97,7 +97,7 @@ def main():
                 if ret: cv2.imshow("monitor", monitor_frame)
             
             # Controls
-            k = cv2.waitKey(25)
+            k = cv2.waitKey(round(1000/9))
             if k == ord('p'):
                 logger.info("stopping worker")
                 running = False
