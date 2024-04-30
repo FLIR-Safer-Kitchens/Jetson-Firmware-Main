@@ -1,4 +1,4 @@
 """Random helper methods and classes"""
 
 from .launcher import Launcher
-from .broadcast import BroadcastEvent
+from .frame_event import NewFrameEvent

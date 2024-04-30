@@ -6,7 +6,7 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 from multiprocessing import shared_memory, Lock, Queue
 from constants import RAW_THERMAL_SHAPE
 from streaming import Transcoder
-from misc import BroadcastEvent
+from misc import NewFrameEvent
 from constants import *
 from misc.logs import *
 import numpy as np
@@ -39,7 +39,7 @@ def main():
     mem_lock = Lock()
 
     # Create master event object for new frames
-    new_frame_parent = BroadcastEvent()
+    new_frame_parent = NewFrameEvent()
 
     # Create child event object for reader process
     new_frame_child = new_frame_parent.get_child()

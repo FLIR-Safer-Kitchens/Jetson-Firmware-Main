@@ -10,7 +10,7 @@ from cooking_detection import CookingDetect
 from lepton.file_utils import Raw16Video
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
-from misc import BroadcastEvent
+from misc import NewFrameEvent
 from misc.logs import *
 import numpy as np
 import logging
@@ -41,7 +41,7 @@ def main():
     mem_lock = Lock()
 
     # Create master event object for new frames
-    new_frame_parent = BroadcastEvent()
+    new_frame_parent = NewFrameEvent()
 
     # Create child event object for reader process
     new_frame_child = new_frame_parent.get_child()

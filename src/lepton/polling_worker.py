@@ -16,7 +16,7 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp):
     Parameters:
     - mem (multiprocessing.shared_memory): Shared memory location of raw thermal image data
     - lock (multiprocessing.Lock): Lock object for shared memory location
-    - new (BroadcastEvent): Master 'new frame' event. Set all child events when a new frame is written
+    - new (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker

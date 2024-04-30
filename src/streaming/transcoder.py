@@ -21,7 +21,7 @@ class Transcoder(Launcher):
         Parameters:
         - vis_mem (multiprocessing.shared_memory): Shared memory location of visible camera data
         - vis_lock (multiprocessing.Lock): Lock object for shared memory location
-        - frame_event (multiprocessing.Event): Flag that indicates when a new frame is available
+        - frame_event (NewFrameConsumer): Flag that indicates when a new frame is available
         - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
         

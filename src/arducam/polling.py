@@ -21,7 +21,7 @@ class Arducam(Launcher):
         Parameters:
         - vis_mem (multiprocessing.shared_memory): Shared memory location of visible camera data
         - vis_lock (multiprocessing.Lock): Lock object for shared memory location
-        - frame_event (BroadcastEvent): Master 'new frame' event. Set all child events when a new frame is written
+        - frame_event (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
         - log_queue (multiprocessing.Queue): Queue to handle log messages
         """
 

@@ -8,7 +8,7 @@ from multiprocessing import shared_memory, Lock, Queue
 from misc.monitor import MonitorClient
 from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
-from misc import BroadcastEvent
+from misc import NewFrameEvent
 from arducam import Arducam
 from misc.logs import *
 import numpy as np
@@ -35,7 +35,7 @@ def main():
     mem_lock = Lock()
 
     # Create master event object for new frames
-    new_frame_parent = BroadcastEvent()
+    new_frame_parent = NewFrameEvent()
 
     # Get a different child event for each process that reads frame data
     new_frame_child = new_frame_parent.get_child()

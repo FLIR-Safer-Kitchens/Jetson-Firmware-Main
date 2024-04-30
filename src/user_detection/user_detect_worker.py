@@ -18,7 +18,7 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
     Parameters:
     - mem (multiprocessing.shared_memory): Shared memory location of visible camera data
     - lock (multiprocessing.Lock): Lock object for shared memory location
-    - new (multiprocessing.Event): Flag that indicates when a new frame is available
+    - new (NewFrameConsumer): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
