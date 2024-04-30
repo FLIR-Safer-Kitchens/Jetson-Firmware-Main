@@ -50,10 +50,12 @@ def polling_worker(mem, lock, new, stop, log, errs):
         # Wait for first frame
         start = time.time()
         while True:
+            # Enforce timeout
             assert (time.time()-start) < 5, "Arducam did not send any data"
+            
+            # Read frame & double check resolution
             ret, frame = vidcap.read()
             if ret:
-                # Double check resolution
                 assert frame.shape == VISIBLE_SHAPE, "Arducam resolution incorrect"
                 break
         
