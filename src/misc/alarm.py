@@ -4,7 +4,6 @@ from serial import Serial, SerialException, SerialTimeoutException
 import serial.tools.list_ports
 from constants import *
 import logging
-import time
 
 
 class AlarmBoard:
@@ -17,36 +16,43 @@ class AlarmBoard:
 
     def __send_cmd(self, cmd: str):
         """
-        Send a command to the alarm board
-
+        Send a command to the alarm board\n
         Parameters:
         - cmd (str): the command to send
 
         Returns (bool): True if the message was transmitted successfully
         """
-        # Encode message string to bytes
-        cmd_bytes = cmd.encode('utf-8')
-        self.logger.debug(f"Transmitting: {cmd_bytes}")
-
-        # Transmit message
         try:
+            # Encode message string to bytes
+            cmd_bytes = cmd.encode('utf-8')
+            self.logger.debug(f"Transmitting: {cmd_bytes}")
+            
+            # Transmit message
             ret = self.ser.write(cmd_bytes)
             assert ret == len(cmd_bytes)
             return True
-        except (SerialException, SerialTimeoutException, AssertionError):
+
+        # Return False if transmission failed
+        except (UnicodeEncodeError, SerialException, SerialTimeoutException, AssertionError):
             self.logger.exception("Failed to send command:")
             return False
 
 
     def __read_str(self):
-        """Receive data from the alarm board"""
-        try: recv = self.ser.readline()
-        except (SerialException, SerialTimeoutException):
+        """
+        Receive data from the alarm board.
+        Returns (str): Decoded message or empty string on error/no data available
+        """
+        try: 
+            # Get raw bytes and return decoded string
+            recv = self.ser.readline()
+            self.logger.debug(f"Received: {recv}")
+            return recv.decode().strip() if recv != None else ""
+        
+        # Return empty string on error
+        except (SerialException, SerialTimeoutException, UnicodeDecodeError):
             self.logger.exception("Serial read failed:")
             return ""
-        
-        self.logger.debug(f"Received: {recv}")
-        return recv.decode().strip() if recv != None else ""
 
 
     def connect(self):
@@ -78,28 +84,11 @@ class AlarmBoard:
             self.ser.close()
 
 
-    def ping(self):
-        """
-        Ping the device\n
-        Returns (bool): True if 'pong' was received
-        """
-        # Clear exiting data
-        self.__read_str()
-
-        # Attempt ping
-        for _ in range(AVR_PING_RETRIES):
-            self.__send_cmd("ping")
-            if "pong" in self.__read_str():
-                return True
-            time.sleep(1)
-        return False
-
-
     def startAlarm(self):
         """Activate the alarm"""
-        return self.__send_cmd("start")
+        return self.__send_cmd("start\n")
 
 
     def stopAlarm(self):
         """Deactivate the alarm"""
-        return self.__send_cmd("stop")
+        return self.__send_cmd("stop\n")

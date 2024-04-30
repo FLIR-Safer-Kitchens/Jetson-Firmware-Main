@@ -21,9 +21,6 @@ def main():
     alarm.connect()
 
     try:
-        # Test the connection
-        assert alarm.ping(), "Serial communication failed"
-
         # User input loop
         while True:
             key = input("cmd: ")
@@ -34,12 +31,12 @@ def main():
                 assert alarm.startAlarm()
             elif key == 'p':
                 assert alarm.stopAlarm()
-            elif key == 't':
-                assert alarm.ping()
     
-    except BaseException as err:
+    except KeyboardInterrupt: pass
+    except:
+        logger.exception("")
+    finally:
         alarm.disconnect()
-        if type(err) != KeyboardInterrupt: raise
 
 
 if __name__ == "__main__":
