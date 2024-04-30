@@ -1,6 +1,8 @@
 """PureThermal polling launcher"""
 
+from constants import HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME
 from .polling_worker import polling_worker
+from misc.hysteresis import HysteresisBool
 from multiprocessing import Value
 from ctypes import c_double
 from misc import Launcher
@@ -17,6 +19,9 @@ class PureThermal(Launcher):
         
         # Maximum detected temperature
         self.max_temp = Value(c_double, 0.0)
+
+        # Flag to indicate when hotspots have been detected
+        self.hotspot_detected = HysteresisBool(HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME)
 
 
     def start(self, raw16_mem, raw16_lock, frame_event, log_queue):
@@ -39,6 +44,7 @@ class PureThermal(Launcher):
                 self.suspend_sig,
                 log_queue,
                 self.exception_queue,
-                self.max_temp
+                self.max_temp,
+                self.hotspot_detected
             )
          )

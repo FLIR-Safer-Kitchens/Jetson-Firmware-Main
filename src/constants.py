@@ -26,6 +26,11 @@ PURETHERMAL_TIMEOUT = 3.0
 ARDUCAM_TIMEOUT = 2.0 
 """(float) Maximum time in seconds to allow the arducam to not send a valid frame """
 
+# Lepton hotspot detection
+HOTSPOT_EMA_ALPHA = 0.1 # Exponential moving avg. constant (weight [0,1] to give to new value). Time constant = -(sample period) / ln(1-alpha)
+HOTSPOT_TRIP_TIME = 3 # Duration in seconds that a hotspot must be visible for in order to register as a hotspot
+HOTSPOT_RELEASE_TIME = 10 # Duration in seconds where no hotspots are detected after which the hotspot flag will be lowered
+
 # Thermal image clipping limits
 TEMP_THRESH_LOW  = 40.0 # degrees C
 TEMP_THRESH_HIGH = 100.0 # degrees C
@@ -39,10 +44,9 @@ BLOB_LIVES = 3 # Number of frames to retain blob for after it has not been detec
 BLOB_HISTORY_RATE = 2.0 # Number of samples to store per second. Can be float
 BLOB_HISTORY_DEPTH = 30 # Maximum number of history samples to keep
 
-# Cooking detection hysteresis thresholds
-COOKING_SCORE_SATURATION  = 30
-COOKING_SCORE_THRESH_LOW  = 10
-COOKING_SCORE_THRESH_HIGH = 20
+# Cooking detection hysteresis
+COOKING_TRIP_TIME = 10 # Duration in seconds that a blob must have a constant/positve slope in order to register as cooking
+COOKING_RELEASE_TIME = 10 # Duration in seconds that a cooking blob must have a nagative slope in order to deregister as cooking
 
 # Blob similarity scoring
 SIM_SCORE_WEIGHTS = (1, 1, 2, 0.5) # Score weights (Overlap, distance, temperature, area)
@@ -68,4 +72,3 @@ AVR_BAUD_RATE = 9600 # Baud rate for serial communication
 AVR_USB_VID = 9025 # USB vendor ID for MCU
 AVR_USB_PID = 67 # USB product ID for MCU
 AVR_TIMEOUT = 2 # Timeout in seconds for incoming and outgoing serial communication
-AVR_PING_RETRIES = 3 # Number of times to reattempt communication with mcu after a failed ping

@@ -1,5 +1,7 @@
 """Class for blob stuff"""
 
+from constants import COOKING_TRIP_TIME, COOKING_RELEASE_TIME
+from misc.hysteresis import HysteresisBool
 from lepton.utils import raw2temp
 from .theil_sen import theil_sen
 from constants import *
@@ -21,15 +23,9 @@ class Blob:
         # after it has not been detected
         self.lives = BLOB_LIVES
 
-        # Saturating counter
-        # +1 every time cooking is detected
-        # -1 every time cooking is not detected
-        self.cooking_score = 0
-
-        # Last reult of cooking detection
-        # is_cooking() returns this when cooking score
-        # is between high and low thresholds
-        self.__cooking = False
+        # Filtered result of cooking detection
+        # is_cooking() returns this value
+        self._cooking = HysteresisBool(COOKING_TRIP_TIME, COOKING_RELEASE_TIME)
 
         # Generate unique color for debugging
         self.color = [0, 255, np.random.randint(0, 256)]
@@ -108,8 +104,7 @@ class Blob:
 
         # Merge properties
         # New object holds the most recent contour, mask, area, temp, etc.
-        new.cooking_score  = old.cooking_score
-        new.__cooking      = old.__cooking
+        new._cooking       = old._cooking
         new.color          = old.color
         new.first_detected = old.first_detected
         new.new_data_flag  = old.new_data_flag
@@ -131,7 +126,7 @@ class Blob:
         # If there's no new data,
         # return most recent value
         if not self.new_data_flag:
-            return self.__cooking
+            return self._cooking.value
         else: self.new_data_flag = False
 
         # Collect temperature history
@@ -156,22 +151,11 @@ class Blob:
 
         # TODO: Calculate blob velocity & add scoring?
 
-        # Threshold slope
-        cooking = slope > TEMP_SLOPE_THRESHOLD
+        logger.debug(f"Slope = {slope:+.3f}")
 
-        # Update score
-        self.cooking_score = self.cooking_score + (1 if cooking else -1)
-        self.cooking_score = np.clip(self.cooking_score, 0, COOKING_SCORE_SATURATION)
-
-        # Update cooking state
-        if self.cooking_score >= COOKING_SCORE_THRESH_HIGH:
-            self.__cooking = True
-        elif self.cooking_score <= COOKING_SCORE_THRESH_LOW:
-            self.__cooking = False
-
-        logger.debug(f"{slope} {self.cooking_score} {self.__cooking}")
-
-        return self.__cooking
+        # Threshold slope & update cooking state
+        self._cooking.value = slope > TEMP_SLOPE_THRESHOLD
+        return self._cooking.value
 
 
     # Draw the blob and its centroid

@@ -1,15 +1,16 @@
 """Worker process for polling PureThermal"""
 
-from constants import RAW_THERMAL_SHAPE, LIBUVC_DLL_PATH, PURETHERMAL_TIMEOUT
 from misc.logs import configure_subprocess
 from .uvc_stream import PureThermalUVC
 from lepton.utils import raw2temp
+from constants import *
 import numpy as np
 import logging
 import time
+import cv2
 
 
-def polling_worker(mem, lock, new, stop, log, errs, max_temp):
+def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
     """
     Main polling loop for PureThermal Lepton driver
 
@@ -42,10 +43,15 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp):
 
         # Wait for first frame
         start = time.time()
-        while (time.time()-start) < 5: 
-            if lep.read()[0]: break
-        else: 
-            assert False, "Lepton did not send any data"
+        while True: 
+            assert (time.time()-start) < 5, "Lepton did not send any data"
+
+            ret, frame = lep.read()
+            if ret:
+                frame = cv2.medianBlur(frame, 3)
+                max_temp.value = raw2temp(np.max(frame)) # Initialize value
+                break
+
         logger.debug("PureThermal connected")
 
         # Timestamp for camera watchdog timer
@@ -77,8 +83,15 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp):
             # Set new frame flag
             new.set()
 
-            # Report maximum temperature
-            max_temp.value = raw2temp(np.max(frame))
+            # Remove extreme values before computing max temp
+            frame = cv2.medianBlur(frame, 3)
+
+            # Apply exponential moving average (EMA) filter to max_temp
+            max_temp.value *= 1-HOTSPOT_EMA_ALPHA
+            max_temp.value +=   HOTSPOT_EMA_ALPHA * raw2temp(np.max(frame))
+
+            # Update 'hotpot detected' flag
+            hotspot.value = max_temp.value > BLOB_MIN_TEMP
 
         # Add errors to queue
         except BaseException as err:
