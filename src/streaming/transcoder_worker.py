@@ -64,12 +64,12 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
             # Dump subprocess stdout and stderr
             # log_output(transcode_proc, logger)
 
-            # Check for new frame
-            if not new.is_set(): continue
+            # Wait for new frame
+            if not new.wait(timeout=0.5): continue
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(timeout=0.5)
+            lock.acquire(timeout=0.2)
             np.copyto(frame, frame_src)
             lock.release()
 

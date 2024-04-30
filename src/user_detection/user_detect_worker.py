@@ -63,12 +63,12 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
     # === Loop ===
     while not stop.is_set():
         try:
-            # Check for new frame
-            if not new.is_set(): continue
+            # Wait for new frame
+            if not new.wait(timeout=0.5): continue
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(timeout=0.5)
+            lock.acquire(timeout=0.2)
             np.copyto(frame, frame_src)
             lock.release()
 
