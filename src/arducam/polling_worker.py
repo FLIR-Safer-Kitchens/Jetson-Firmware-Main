@@ -3,6 +3,8 @@
 from constants import VISIBLE_SHAPE, ARDUCAM_TIMEOUT
 from misc.logs import configure_subprocess
 import numpy as np
+import subprocess
+import platform
 import logging
 import time
 import cv2
@@ -29,11 +31,33 @@ def polling_worker(mem, lock, new, stop, log, errs):
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
 
-        # Create video capture object
-        logger.debug("Connecting to Arducam")
-        vidcap = cv2.VideoCapture(0)
-        assert check_open(vidcap), "Arducam could not be opened"
-        logger.debug("Arducam connected sucessfully")
+        # Find Arducam
+        logger.debug("Searching for Arducam")
+        arducam_index = get_arducam_index()
+        assert arducam_index != None, "Failed to find Arducam"
+
+        # Open Arducam
+        logger.debug(f"Attemping to open VideoCapture({arducam_index})")
+        vidcap = cv2.VideoCapture(arducam_index)
+        assert vidcap.isOpened(), "VideoCapture failed to open"
+
+        # Set resolution
+        if int(vidcap.get(cv2.CAP_PROP_FRAME_WIDTH)) != int(VISIBLE_SHAPE[1]):
+            assert vidcap.set(cv2.CAP_PROP_FRAME_WIDTH, VISIBLE_SHAPE[1]), "Failed to set image width"
+        if int(vidcap.get(cv2.CAP_PROP_FRAME_HEIGHT)) != int(VISIBLE_SHAPE[0]):
+            assert vidcap.set(cv2.CAP_PROP_FRAME_HEIGHT, VISIBLE_SHAPE[0]), "Failed to set image height"
+        
+        # Wait for first frame
+        start = time.time()
+        while True:
+            assert (time.time()-start) < 5, "Arducam did not send any data"
+            ret, frame = vidcap.read()
+            if ret:
+                # Double check resolution
+                assert frame.shape == VISIBLE_SHAPE, "Arducam resolution incorrect"
+                break
+        
+        logger.debug("Arducam opened sucessfully")
 
         # Create numpy array backed by shared memory
         frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
@@ -79,7 +103,9 @@ def polling_worker(mem, lock, new, stop, log, errs):
 
     # === Terminate ===
     try:
-        vidcap.release()
+        try: vidcap.release()
+        except UnboundLocalError: pass # vidcap not yet created
+
         new.clear() # Invalidate last data
 
     # Add errors to queue
@@ -90,20 +116,31 @@ def polling_worker(mem, lock, new, stop, log, errs):
     else: logger.debug("Termination routine completed. Exiting...")
 
 
-def check_open(vid_cap: cv2.VideoCapture, timeout=3.0):
-    """
-    Check that a videoCapture object is open and sending data
-    
-    Parameters:
-    - vid_cap (cv2.VideoCapture): VideoCapture object to be checked
-    - timeout (float): Maximum time in seconds to wait for the first frame
-    """
+def get_arducam_index():
+    """Cross-platform method to find the index of the Arducam camera module"""
 
-    # Check if VideoCapture is opened
-    if not vid_cap.isOpened(): return False
+    if platform.system() == 'Windows':
+        # List AV input devices
+        cmd = "ffmpeg -f dshow -list_devices true -hide_banner -i dummy"
+        proc = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
+        output = proc.stderr.decode('utf-8')
 
-    # Wait for first frame
-    start = time.time()
-    while (time.time()-start) < timeout:
-        if vid_cap.read()[0]: return True
-    else: return False
+        # Find arducam index
+        lines = output.splitlines()
+        for idx in range(0, len(lines), 2):
+            if "USB Camera" in lines[idx]:
+                return int(idx/2)
+
+    elif platform.system() == 'Linux':
+        # List video input devices
+        cmd = "v4l2-ctl --list-devices"
+        proc = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
+        output = proc.stderr.decode('utf-8')
+
+        # Find arducam index
+        lines = output.splitlines()
+        for idx, line in enumerate(lines): 
+            if "Arducam_8mp" in line:
+                return lines[idx+1].strip()
+            
+    return None
