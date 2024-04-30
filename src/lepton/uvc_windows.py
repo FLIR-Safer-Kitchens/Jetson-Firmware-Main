@@ -122,4 +122,4 @@ def frame_callback(short_array, width, height):
     
     # Add frame to queue
     if not PureThermalWindows.frame_queue.full():
-        PureThermalWindows.frame_queue.put(frame)
+        PureThermalWindows.frame_queue.put_nowait(frame)

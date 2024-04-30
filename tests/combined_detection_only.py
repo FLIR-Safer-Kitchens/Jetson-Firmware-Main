@@ -110,8 +110,6 @@ def main():
         running = state_machine.update()
         assert running, "Initialization failed"
 
-        print("hello?")
-
         while running:
             # Check log listener status
             if not logging_thread.running():

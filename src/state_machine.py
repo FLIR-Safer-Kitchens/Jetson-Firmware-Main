@@ -149,7 +149,6 @@ class StateMachine:
 
             # Start lepton polling process if system has been configured
             else:
-                print('sdfj')
                 self.__set_state(STATE_IDLE)
         
         # Setup state
@@ -184,11 +183,13 @@ class StateMachine:
             # Simple timer for now
             if not self.alarm_active:
                 if self.cooking_detected() and self.unattended():
+                    self.alarm_active = True
                     self.logger.info("\n******************\nALARM TRIGGERED\n******************")
             # ************************************************************
             
             # User returned --> Clear alarm and return to idle
             elif not self.unattended():
+                self.alarm_active = False
                 self.logger.info("Alarm cleared")
                 self.__set_state(STATE_IDLE)
         
