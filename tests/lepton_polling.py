@@ -54,6 +54,9 @@ def main():
     # Create window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
+    # Timestamp for debug messages
+    last_print = 0
+
     try:
         # Start thread to emit worker log messages
         logging_thread = QueueListener(logging_queue)
@@ -81,6 +84,11 @@ def main():
                 # Show image
                 color = cv2.applyColorMap(clip_norm(raw), cv2.COLORMAP_INFERNO)
                 cv2.imshow("frame", color)
+
+                # Display detection outputs
+                if (time.time()-last_print) > 1:
+                    last_print = time.time()
+                    logger.info(f"Max Temperature: {pt.max_temp.value:.1f}. Hotspot Detected: {pt.hotspot_detected.value}")
             
             # Controls
             k = cv2.waitKey(25)

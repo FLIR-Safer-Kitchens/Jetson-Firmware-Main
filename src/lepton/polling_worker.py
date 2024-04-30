@@ -1,10 +1,14 @@
 """Worker process for polling PureThermal"""
 
+from constants import HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME
+from .uvc_windows import PureThermalWindows
+from misc.hysteresis import HysteresisBool
 from misc.logs import configure_subprocess
 from .uvc_stream import PureThermalUVC
 from lepton.utils import raw2temp
 from constants import *
 import numpy as np
+import platform
 import logging
 import time
 import cv2
@@ -35,7 +39,12 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
         frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
 
         # Create UVC streaming object
-        lep = PureThermalUVC(LIBUVC_DLL_PATH)
+        # TODO: In theory, libuvc should work for windows as well.
+        # I just have not had much luck trying to install it
+        if platform.system() == "Linux":
+            lep = PureThermalUVC(LIBUVC_DLL_PATH)
+        elif platform.system() == "Windows":
+            lep = PureThermalWindows()
 
         # Open video stream
         logger.debug("Connecting to PureThermal")
@@ -56,6 +65,9 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
 
         # Timestamp for camera watchdog timer
         last_good_frame = time.time()
+
+        # Applies time-based hysteresis to the hotspot detection flag
+        hotspot_detected = HysteresisBool(HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME)
 
     # Add errors to queue
     except BaseException as err:
@@ -91,7 +103,8 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
             max_temp.value +=   HOTSPOT_EMA_ALPHA * raw2temp(np.max(frame))
 
             # Update 'hotpot detected' flag
-            hotspot.value = max_temp.value > BLOB_MIN_TEMP
+            hotspot_detected.value = max_temp.value > BLOB_MIN_TEMP
+            hotspot.value = hotspot_detected.value
 
         # Add errors to queue
         except BaseException as err:
