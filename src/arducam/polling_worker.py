@@ -135,9 +135,9 @@ def get_arducam_index():
 
     elif platform.system() == 'Linux':
         # List video input devices
-        cmd = "v4l2-ctl --list-devices"
-        proc = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
-        output = proc.stderr.decode('utf-8')
+        cmd = ["v4l2-ctl", "--list-devices"]
+        proc = subprocess.run(cmd, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE)
+        output = proc.stdout.decode('utf-8')
 
         # Find arducam index
         lines = output.splitlines()
