@@ -5,6 +5,7 @@ from lepton.polling import PureThermal
 from user_detection import UserDetect
 from constants import BLOB_MIN_TEMP
 from arducam import Arducam
+import winsound
 import logging
 import time
 
@@ -76,7 +77,7 @@ class StateMachine:
         self.hotspots_detected    = lambda: self.purethermal.hotspot_detected.value
         self.valid_blobs_detected = lambda: self.cooking_detect.blobs_detected.value
         self.cooking_detected     = lambda: self.cooking_detect.cooking_detected.value
-        self.unattended           = lambda: (time.time() - self.user_detect.last_detected.value) > 60*1 # 1 minute
+        self.unattended           = lambda: (time.time() - self.user_detect.last_detected.value) > 20 # seconds
 
         # Add an attribute to indicate when a worker should be on
         self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE
@@ -184,14 +185,15 @@ class StateMachine:
             if not self.alarm_active:
                 if self.cooking_detected() and self.unattended():
                     self.alarm_active = True
-                    self.logger.info("\n******************\nALARM TRIGGERED\n******************")
+                    self.logger.info("\n\n ****************** ALARM TRIGGERED ******************\n")
+                    winsound.PlaySound("SystemExit", winsound.SND_ALIAS)
             # ************************************************************
             
             # User returned --> Clear alarm and return to idle
             elif not self.unattended():
                 self.alarm_active = False
                 self.logger.info("Alarm cleared")
-                self.__set_state(STATE_IDLE)
+                # self.__set_state(STATE_IDLE)
         
         else:
             self.logger.warning(f"Unrecognized current state: {self.current_state}")
