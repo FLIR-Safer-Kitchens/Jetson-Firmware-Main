@@ -1,5 +1,6 @@
 """Worker that performs user detection"""
 
+from misc.hysteresis import HysteresisBool
 from misc.logs import configure_subprocess
 from misc.monitor import MonitorServer
 from ultralytics import YOLO
@@ -52,6 +53,9 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         model = YOLO(os.path.join(model_dir, 'yolov8n.pt'))
         logger.debug("Model loaded successfully")
 
+        # Detection state
+        user_detected = HysteresisBool(2, 4)
+
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
@@ -82,13 +86,12 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             )
 
             # Extract confidence ratings, bounding boxes, and IDs
-            confs = results[0].boxes.conf.double().tolist()
             boxes = results[0].boxes.xyxy.tolist()
             ids   = results[0].boxes.id
             ids   = ids.int().tolist() if hasattr(ids, "tolist") else []
 
             found = set()
-            for i in range(len(confs)):
+            for i in range(len(boxes)):
                 # Check ids length. New objects are not given an ID at first
                 if i >= len(ids): continue
                 else: found.add(ids[i])
@@ -105,14 +108,16 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
                 if k not in found: del tracked_people[k]
 
             # Detect user
-            if any([v.valid for v in tracked_people.values()]):
-                detect_ts.value = time.time()
+            user_detected.value = any([v.valid for v in tracked_people.values()])
+            if user_detected.value: detect_ts.value = time.time()
 
             # Show debug output on monitor
             for k, v in tracked_people.items():
-                color = (0, 255, 0) if v.valid else (0, 0, 255)
+                color = (0, 255, 0) if user_detected.value else (0, 186, 255)
+                if not v.valid: color = (0, 0, 255)
                 center = (int(v.center[0]), int(v.center[1]))
                 cv2.circle(frame, center, 10, color, cv2.FILLED)
+            
             monitor.show(frame)
 
         # Add errors to queue
@@ -150,10 +155,8 @@ class TrackedPerson:
         # Last movement timestamp
         self.last_move = self.first_detected
         
-        # True if the person is considered valid:
-        # - Has existed for a sufficiently long time
-        # - Is not stationary
-        self.valid = False
+        # True if the person is considered valid (not stationary)
+        self.valid = True
 
     def update(self, bbox):
         """
@@ -173,12 +176,6 @@ class TrackedPerson:
         if  dist > USER_MOVEMENT_DIST_THRESH:
             self.center = new_center
             self.last_move = time.time()
-
-        # Check tracking duration
-        self.valid = True
-        if (time.time() - self.first_detected) < USER_TRACKING_TIME_THRESH:
-            self.valid = False
         
         # Check time since last movement
-        elif (time.time() - self.last_move) > USER_MOVEMENT_TIME_THRESH:
-            self.valid = False
+        self.valid = (time.time() - self.last_move) < USER_MOVEMENT_TIME_THRESH
