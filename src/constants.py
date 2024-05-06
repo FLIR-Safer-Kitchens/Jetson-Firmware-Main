@@ -26,6 +26,29 @@ PURETHERMAL_TIMEOUT = 3.0
 ARDUCAM_TIMEOUT = 2.0 
 """(float) Maximum time in seconds to allow the arducam to not send a valid frame """
 
+# Arducam calibration matrix
+ARDUCAM_CALIB = [
+	[398.62421431702717, 0.000000000000000, 311.42355820638990],
+	[0.0000000000000000, 398.5759247050562, 243.21092881633064],
+	[0.0000000000000000, 0.000000000000000, 1.0000000000000000]
+]
+
+# Arducam distortion coefficients
+ARDUCAM_DIST = [
+    -0.4200401425733124600,
+     0.1767459404637726500,
+     0.0021537820029228164,
+     0.0003045840186394911,
+    -0.0339511656826229840,
+]
+
+# Arducam new camera matrix
+ARDUCAM_NEW_CAM = [
+    [351.8592681884766, 0.000000000000000, 302.78308803853616],
+	[0.000000000000000, 361.0281494140625, 239.86782248284146],
+	[0.000000000000000, 0.000000000000000, 1.0000000000000000]
+]
+
 # Lepton hotspot detection
 HOTSPOT_EMA_ALPHA = 0.1 # Exponential moving avg. constant (weight [0,1] to give to new value). Time constant = -(sample period) / ln(1-alpha)
 HOTSPOT_TRIP_TIME = 3 # Duration in seconds that a hotspot must be visible for in order to register as a hotspot
@@ -57,8 +80,7 @@ SIM_SCORE_MIN = 0.1 # Not a match if any individual score is below this threshol
 TEMP_SLOPE_THRESHOLD = -0.05
 
 # User detection constants
-USER_MIN_CONFIDENCE = 0.5 # Confidence threshold for user detection [0,1]
-USER_TRACKING_TIME_THRESH = 2  # Time in seconds after first detection to consider a person valid
+USER_MIN_CONFIDENCE = 0.6 # Confidence threshold for user detection [0,1]
 USER_MOVEMENT_DIST_THRESH = 20 # Pixel distance that a bounding box must move to be considered movement
 USER_MOVEMENT_TIME_THRESH = 15*60 # Maximum time in seconds that a person can stay stationary before being considered invalid
 

@@ -1,7 +1,7 @@
 """Worker process for polling Arducam"""
 
-from constants import VISIBLE_SHAPE, ARDUCAM_TIMEOUT
 from misc.logs import configure_subprocess
+from constants import *
 import numpy as np
 import subprocess
 import platform
@@ -85,13 +85,19 @@ def polling_worker(mem, lock, new, stop, log, errs):
                 assert (time.time() - last_good_frame) < ARDUCAM_TIMEOUT, "Camera connection timed out"
                 continue
 
-            # Process frame
-            if frame.shape != VISIBLE_SHAPE:
-                frame.resize(VISIBLE_SHAPE)
+            # Flip frame
+            frame = cv2.flip(frame, 0)
 
-            # Copy frame to shared memory
+            # Undistort frame 
+            # Copies data to shared memory
             lock.acquire(timeout=0.5)
-            np.copyto(frame_dst, frame)
+            frame = cv2.undistort(
+                src=frame, 
+                cameraMatrix=np.array(ARDUCAM_CALIB),
+                distCoeffs=np.array(ARDUCAM_DIST), 
+                dst=frame_dst, 
+                newCameraMatrix=np.array(ARDUCAM_NEW_CAM)
+            )
             lock.release()
 
             # Set new frame flag
