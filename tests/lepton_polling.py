@@ -86,9 +86,9 @@ def main():
                 cv2.imshow("frame", color)
 
                 # Display detection outputs
-                if (time.time()-last_print) > 1:
-                    last_print = time.time()
-                    logger.info(f"Max Temperature: {pt.max_temp.value:.1f}. Hotspot Detected: {pt.hotspot_detected.value}")
+                # if (time.time()-last_print) > 1:
+                #     last_print = time.time()
+                #     logger.info(f"Max Temperature: {pt.max_temp.value:.1f}. Hotspot Detected: {pt.hotspot_detected.value}")
             
             # Controls
             k = cv2.waitKey(25)

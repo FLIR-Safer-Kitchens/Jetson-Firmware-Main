@@ -66,6 +66,9 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
         # Timestamp for camera watchdog timer
         last_good_frame = time.time()
 
+        # Timestamp for printing debug output
+        last_print = 0
+
         # Applies time-based hysteresis to the hotspot detection flag
         hotspot_detected = HysteresisBool(HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME)
 
@@ -105,6 +108,11 @@ def polling_worker(mem, lock, new, stop, log, errs, max_temp, hotspot):
             # Update 'hotpot detected' flag
             hotspot_detected.value = max_temp.value > BLOB_MIN_TEMP
             hotspot.value = hotspot_detected.value
+
+            # Show debug output
+            if logger.level == logging.DEBUG and (time.time()-last_print) > 1:
+                last_print = time.time()
+                logger.debug(f"Max Temperature: {max_temp.value:.1f}. Hotspot Detected: {hotspot_detected.value}")
 
         # Add errors to queue
         except BaseException as err:
