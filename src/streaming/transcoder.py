@@ -14,13 +14,12 @@ class Transcoder(Launcher):
         self.logger.setLevel(logging.DEBUG)
 
 
-    def start(self, raw16_mem, raw16_lock, frame_event, log_queue):
+    def start(self, raw16_mem, frame_event, log_queue):
         """
         Start the transcoder worker
 
         Parameters:
-        - vis_mem (multiprocessing.shared_memory): Shared memory location of visible camera data
-        - vis_lock (multiprocessing.Lock): Lock object for shared memory location
+        - vis_mem (multiprocessing.Array): Shared memory location of visible camera data
         - frame_event (NewFrameConsumer): Flag that indicates when a new frame is available
         - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
@@ -29,7 +28,6 @@ class Transcoder(Launcher):
             target=transcoder_worker,
             args=(
                 raw16_mem,
-                raw16_lock, 
                 frame_event,
                 self.suspend_sig,
                 log_queue,

@@ -5,11 +5,14 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Queue
+
+from multiprocessing import Array, Queue
 from constants import RAW_THERMAL_SHAPE
+from misc.monitor import MonitorClient
 from lepton.polling import PureThermal
 from lepton.utils import clip_norm
 from misc import NewFrameEvent
+from ctypes import c_uint16
 from misc.logs import *
 import numpy as np
 import logging
@@ -31,16 +34,13 @@ def main():
     frame = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
 
     # Create image array in shared memory
-    mem = shared_memory.SharedMemory(create=True, size=frame.nbytes)
+    mem = Array(c_uint16, frame.nbytes, lock=True)
 
     # Create numpy array backed by shared memory
-    frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+    frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
     # Create array for us to copy to
     raw = np.empty_like(frame_src)
-
-    # Create lock object for shared memory
-    mem_lock = Lock()
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -51,8 +51,12 @@ def main():
     # Instantiate launcher
     pt = PureThermal()
 
+    # Open client monitor
+    monitor = MonitorClient(12348)
+
     # Create window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     # Timestamp for debug messages
     last_print = 0
@@ -77,18 +81,23 @@ def main():
                 new_frame_child.clear()
 
                 # Grab frame from shared memory
-                mem_lock.acquire(timeout=0.5)
+                mem.get_lock().acquire(timeout=0.5)
                 np.copyto(raw, frame_src)
-                mem_lock.release()
+                mem.get_lock().release()
 
                 # Show image
                 color = cv2.applyColorMap(clip_norm(raw), cv2.COLORMAP_INFERNO)
                 cv2.imshow("frame", color)
 
+                # Get monitor view
+                ret, frame = monitor.read()
+                if ret:
+                    cv2.imshow("monitor", frame)
+
                 # Display detection outputs
-                # if (time.time()-last_print) > 1:
-                #     last_print = time.time()
-                #     logger.info(f"Max Temperature: {pt.max_temp.value:.1f}. Hotspot Detected: {pt.hotspot_detected.value}")
+                if (time.time()-last_print) > 1:
+                    last_print = time.time()
+                    logger.info(f"Max Temperature: {pt.max_temp.value:.1f}. Hotspot Detected: {pt.hotspot_detected.value}")
             
             # Controls
             k = cv2.waitKey(25)
@@ -100,7 +109,7 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                pt.start(mem, mem_lock, new_frame_child, logging_queue)
+                pt.start(mem, new_frame_child, logging_queue)
             elif k == ord('q'):
                 logger.info("quitting")
                 raise KeyboardInterrupt
@@ -110,9 +119,8 @@ def main():
     except:
         logger.exception("")
     finally:
-        pt.stop()       
-        mem.close()
-        mem.unlink()
+        monitor.stop()
+        pt.stop()
         logging_thread.stop()
         cv2.destroyAllWindows()
 

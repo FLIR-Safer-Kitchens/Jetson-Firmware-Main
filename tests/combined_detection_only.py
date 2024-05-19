@@ -6,11 +6,12 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__
 
 # Muliprocessing stuff
 from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
-from multiprocessing import shared_memory, Lock, Queue
 from cooking_detection import CookingDetect
+from multiprocessing import Array, Queue
 from lepton.polling import PureThermal
 from state_machine import StateMachine
 from user_detection import UserDetect
+from ctypes import c_uint8, c_uint16
 from misc import NewFrameEvent
 from arducam import Arducam
 import numpy as np
@@ -35,15 +36,11 @@ def main():
 
     # Create image arrays in shared memory
     vis_bytes = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8').nbytes
-    vis_mem = shared_memory.SharedMemory(create=True, size=vis_bytes)
-
+    vis_mem = Array(c_uint8, vis_bytes, lock=True)
+    
     # Create image array in shared memory
     raw16_bytes = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16').nbytes
-    raw16_mem = shared_memory.SharedMemory(create=True, size=raw16_bytes)
-
-    # Create lock objects for shared memory
-    vis_mem_lock   = Lock()
-    raw16_mem_lock = Lock()
+    raw16_mem = Array(c_uint16, raw16_bytes, lock=True)
 
     # Create master event object for new frames
     vis_frame_parent   = NewFrameEvent()
@@ -63,8 +60,7 @@ def main():
     state_machine = StateMachine(
         arducam=arducam_proc,
         arducam_args=(
-            vis_mem, 
-            vis_mem_lock,
+            vis_mem,
             vis_frame_parent,
             logging_queue
         ),
@@ -72,7 +68,6 @@ def main():
         purethermal=purethermal_proc,
         purethermal_args=(
             raw16_mem,
-            raw16_mem_lock,
             raw16_frame_parent,
             logging_queue
         ),
@@ -80,7 +75,6 @@ def main():
         user_detect=user_detect_proc,
         user_detect_args=(
             vis_mem,
-            vis_mem_lock,
             vis_frame_child,
             logging_queue
         ),
@@ -88,7 +82,6 @@ def main():
         cooking_detect=cooking_detect_proc,
         cooking_detect_args=(
             raw16_mem,
-            raw16_mem_lock,
             raw16_frame_child,
             logging_queue
         )
@@ -142,13 +135,6 @@ def main():
         purethermal_proc.stop()
         user_detect_proc.stop()
         cooking_detect_proc.stop()
-        
-        # Deallocate memory
-        vis_mem.close()
-        vis_mem.unlink()
-
-        raw16_mem.close()
-        raw16_mem.unlink()
 
         # Shut down monitor windows
         user_monitor.stop()

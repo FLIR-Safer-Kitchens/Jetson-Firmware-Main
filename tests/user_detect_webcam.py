@@ -4,11 +4,12 @@
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Queue
+from multiprocessing import Array, Queue
 from misc.monitor import MonitorClient
 from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
 from misc import NewFrameEvent
+from ctypes import c_uint8
 from misc.logs import *
 import numpy as np
 import logging
@@ -28,13 +29,10 @@ def main():
 
     # Create image array in shared memory
     dummy = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8')
-    mem = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
+    mem = Array(c_uint8, dummy.nbytes, lock=True)
 
     # Create numpy array backed by shared memory
-    frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
-
-    # Create lock object for shared memory
-    mem_lock = Lock()
+    frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.get_obj())
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -81,9 +79,9 @@ def main():
                 frame.resize(VISIBLE_SHAPE)
 
             # Copy frame to shared memory
-            mem_lock.acquire(timeout=0.5)
+            mem.get_lock().acquire(timeout=0.5)
             np.copyto(frame_dst, frame)
-            mem_lock.release()
+            mem.get_lock().release()
 
             # Set new frame flag
             new_frame_parent.set()
@@ -108,7 +106,7 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                user.start(mem, mem_lock, new_frame_child, logging_queue)
+                user.start(mem, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
                 raise KeyboardInterrupt
@@ -121,9 +119,6 @@ def main():
         user.stop()
         vid.release()
         monitor.stop()
-
-        mem.close()
-        mem.unlink()
 
         logging_thread.stop()
         logger.info("test ended")

@@ -4,12 +4,13 @@
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Queue
+from multiprocessing import Array, Queue
 from misc.monitor import MonitorClient
 from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
 from misc import NewFrameEvent
 from arducam import Arducam
+from ctypes import c_uint8
 from misc.logs import *
 import numpy as np
 import logging
@@ -29,10 +30,7 @@ def main():
 
     # Create image array in shared memory
     dummy = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8')
-    mem = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
-
-    # Create lock object for shared memory
-    mem_lock = Lock()
+    mem = Array(c_uint8, dummy.nbytes, lock=True)
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -88,8 +86,8 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                cam.start(mem, mem_lock, new_frame_parent, logging_queue)
-                user.start(mem, mem_lock, new_frame_child, logging_queue)
+                cam.start(mem, new_frame_parent, logging_queue)
+                user.start(mem, new_frame_child, logging_queue)
                 
             elif k == ord('q'):
                 raise KeyboardInterrupt
@@ -102,9 +100,6 @@ def main():
         user.stop()
         cam.stop()
         monitor.stop()
-        
-        mem.close()
-        mem.unlink()
 
         logging_thread.stop()
         logger.info("test ended")

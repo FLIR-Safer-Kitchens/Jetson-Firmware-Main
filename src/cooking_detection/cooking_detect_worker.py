@@ -10,13 +10,12 @@ import logging
 import cv2
 
 
-def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_det):
+def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_det):
     """
     Main cooking detection loop
 
     Parameters:
-    - mem (multiprocessing.shared_memory): Shared memory location of raw16 image data
-    - lock (multiprocessing.Lock): Lock object for shared memory location
+    - mem (multiprocessing.Array): Shared memory location of raw16 image data
     - new (NewFrameConsumer): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -38,7 +37,7 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
         monitor = MonitorServer(12347)
 
         # Create numpy array backed by shared memory
-        frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+        frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
         # Create array for us to copy to
         frame = np.empty_like(frame_src)
@@ -62,9 +61,9 @@ def cooking_detect_worker(mem, lock, new, stop, log, errs, hotspot_det, cooking_
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(timeout=0.2)
+            mem.get_lock().acquire(timeout=0.2)
             np.copyto(frame, frame_src)
-            lock.release()
+            mem.get_lock().release()
 
             # Find blobs in image
             new_blobs = find_blobs(frame)

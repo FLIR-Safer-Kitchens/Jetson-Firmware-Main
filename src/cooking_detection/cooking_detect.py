@@ -20,13 +20,12 @@ class CookingDetect(Launcher):
         self.cooking_detected = Value(c_bool, False)
         
 
-    def start(self, raw16_mem, mem_lock, frame_event, log_queue):
+    def start(self, raw16_mem, frame_event, log_queue):
         """
         Start the cooking detection worker
 
         Parameters:
-        - raw16_mem (multiprocessing.shared_memory): Shared memory location of raw16 frame data
-        - mem_lock (multiprocessing.Lock): Lock object for shared memory location
+        - raw16_mem (multiprocessing.Array): Shared memory location of raw16 frame data
         - frame_event (NewFrameConsumer): Flag that indicates when a new frame is available
         - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
@@ -35,7 +34,6 @@ class CookingDetect(Launcher):
             target=cooking_detect_worker,
             args=(
                 raw16_mem,
-                mem_lock,
                 frame_event,
                 self.suspend_sig,
                 log_queue,

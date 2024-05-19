@@ -14,13 +14,12 @@ class Arducam(Launcher):
         self.logger.setLevel(logging.DEBUG)
 
 
-    def start(self, vis_mem, vis_lock, frame_event, log_queue):
+    def start(self, vis_mem, frame_event, log_queue):
         """
         Start the arducam polling worker
 
         Parameters:
-        - vis_mem (multiprocessing.shared_memory): Shared memory location of visible camera data
-        - vis_lock (multiprocessing.Lock): Lock object for shared memory location
+        - vis_mem (multiprocessing.Array): Shared memory location of visible camera data
         - frame_event (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
         - log_queue (multiprocessing.Queue): Queue to handle log messages
         """
@@ -29,7 +28,6 @@ class Arducam(Launcher):
             target=polling_worker,
             args=(
                 vis_mem,
-                vis_lock,
                 frame_event,
                 self.suspend_sig,
                 log_queue,

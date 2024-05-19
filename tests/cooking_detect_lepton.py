@@ -5,12 +5,13 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Queue
 from cooking_detection import CookingDetect
+from multiprocessing import Array, Queue
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
 from lepton.polling import PureThermal
 from misc import NewFrameEvent
+from ctypes import c_uint16
 from misc.logs import *
 import numpy as np
 import logging
@@ -30,10 +31,7 @@ def main():
 
     # Create image array in shared memory
     dummy = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
-    mem = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
-
-    # Create lock object for shared memory
-    mem_lock = Lock()
+    mem = Array(c_uint16, dummy.nbytes, lock=True)
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -90,8 +88,8 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                cd.start(mem, mem_lock, new_frame_child, logging_queue)
-                pt.start(mem, mem_lock, new_frame_parent, logging_queue)
+                cd.start(mem, new_frame_child, logging_queue)
+                pt.start(mem, new_frame_parent, logging_queue)
             elif k == ord('q'):
                 logger.info("quitting")
                 raise KeyboardInterrupt
@@ -103,9 +101,7 @@ def main():
     finally:
         cd.stop()    
         pt.stop()  
-        monitor.stop() 
-        mem.close()
-        mem.unlink()
+        monitor.stop()
         logging_thread.stop()
         cv2.destroyAllWindows()
 

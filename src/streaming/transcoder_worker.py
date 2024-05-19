@@ -11,13 +11,12 @@ import cv2
 import os
 
 
-def transcoder_worker(mem, lock, new, stop, log, errs):
+def transcoder_worker(mem, new, stop, log, errs):
     """
     Accept incoming raw thermal frames, stream to ffmpeg using UDP, and output a HLS stream
 
     Parameters:
-    - mem (multiprocessing.shared_memory): Shared memory location of raw16 image data
-    - lock (multiprocessing.Lock): Lock object for shared memory location
+    - mem (multiprocessing.Array): Shared memory location of raw16 image data
     - new (NewFrameConsumer): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -34,7 +33,7 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
         configure_subprocess(log)
 
         # Create numpy array backed by shared memory
-        frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
+        frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
         # Create array for us to copy to
         frame = np.empty_like(frame_src)
@@ -69,9 +68,9 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(timeout=0.2)
+            mem.get_lock().acquire(timeout=0.2)
             np.copyto(frame, frame_src)
-            lock.release()
+            mem.get_lock().release()
 
             # Normalize & colorize frame
             frame = clip_norm(frame)
@@ -99,7 +98,7 @@ def transcoder_worker(mem, lock, new, stop, log, errs):
             transcode_proc.kill()
 
         # Emit any lingering error messages
-        log_output(transcode_proc, logger)
+        # log_output(transcode_proc, logger)
 
         # Shut down UDP socket
         sock.close()
@@ -124,8 +123,8 @@ def start_transcoder():
         '-c:v',                  'libx264',                     # Video codec
         '-preset',               'ultrafast',                   # Preset for faster encoding
         '-f',                    'hls',                         # Output format HLS
-        '-hls_time',             '2',                           # Segment duration (in seconds)
-        '-hls_list_size',        '6',                           # Maximum number of playlist entries
+        '-hls_time',             '10',                          # Segment duration (in seconds)
+        '-hls_list_size',        '2',                           # Maximum number of playlist entries
         '-hls_flags',            'delete_segments+append_list', # HLS flags
         '-hls_segment_filename', 
         os.path.join(HLS_DIRECTORY, 'segment%d.ts'), # Segment filename pattern

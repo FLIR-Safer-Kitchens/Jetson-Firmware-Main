@@ -12,13 +12,12 @@ import cv2
 import os
 
 
-def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
+def user_detect_worker(mem, new, stop, log, errs, detect_ts):
     """
     Main user detection loop
 
     Parameters:
-    - mem (multiprocessing.shared_memory): Shared memory location of visible camera data
-    - lock (multiprocessing.Lock): Lock object for shared memory location
+    - mem (multiprocessing.Array): Shared memory location of visible camera data
     - new (NewFrameConsumer): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -39,7 +38,7 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
         monitor = MonitorServer(12346)
 
         # Create numpy array backed by shared memory
-        frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
+        frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.get_obj())
 
         # Create array for us to copy to
         frame = np.empty_like(frame_src)
@@ -72,9 +71,9 @@ def user_detect_worker(mem, lock, new, stop, log, errs, detect_ts):
             else: new.clear()
 
             # Copy frame from shared memory
-            lock.acquire(timeout=0.2)
+            mem.get_lock().acquire(timeout=0.2)
             np.copyto(frame, frame_src)
-            lock.release()
+            mem.get_lock().release()
 
             # Run YOLOv8 tracking on the frame
             results = model.track(

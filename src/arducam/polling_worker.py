@@ -10,13 +10,12 @@ import time
 import cv2
 
 
-def polling_worker(mem, lock, new, stop, log, errs):
+def polling_worker(mem, new, stop, log, errs):
     """
     Main polling loop for Arducam
 
     Parameters:
-    - mem (multiprocessing.shared_memory): Shared memory location of visible image data
-    - lock (multiprocessing.Lock): Lock object for shared memory location
+    - mem (multiprocessing.Array): Shared memory location of visible image data
     - new (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -62,7 +61,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
         logger.debug("Arducam opened sucessfully")
 
         # Create numpy array backed by shared memory
-        frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.buf)
+        frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.get_obj())
 
         # Timestamp for camera watchdog timer
         last_good_frame = time.time()
@@ -90,7 +89,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
 
             # Undistort frame 
             # Copies data to shared memory
-            lock.acquire(timeout=0.5)
+            mem.get_lock().acquire(timeout=0.5)
             frame = cv2.undistort(
                 src=frame, 
                 cameraMatrix=np.array(ARDUCAM_CALIB),
@@ -98,7 +97,7 @@ def polling_worker(mem, lock, new, stop, log, errs):
                 dst=frame_dst, 
                 newCameraMatrix=np.array(ARDUCAM_NEW_CAM)
             )
-            lock.release()
+            mem.get_lock().release()
 
             # Set new frame flag
             new.set()

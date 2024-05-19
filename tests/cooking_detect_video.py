@@ -5,12 +5,13 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from multiprocessing import shared_memory, Lock, Queue
 from cooking_detection import CookingDetect
+from multiprocessing import Array, Queue
 from lepton.file_utils import Raw16Video
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
 from misc import NewFrameEvent
+from ctypes import c_uint16
 from misc.logs import *
 import numpy as np
 import logging
@@ -32,13 +33,10 @@ def main():
     frame = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
 
     # Create image array in shared memory
-    mem = shared_memory.SharedMemory(create=True, size=frame.nbytes)
+    mem = Array(c_uint16, frame.nbytes, lock=True)
 
     # Create numpy array backed by shared memory
-    frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.buf)
-
-    # Create lock object for shared memory
-    mem_lock = Lock()
+    frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -81,9 +79,9 @@ def main():
                 if not ret: raise KeyboardInterrupt
 
                 # Write frame to shared memory
-                mem_lock.acquire(timeout=0.5)
+                mem.get_lock().acquire(timeout=0.5)
                 np.copyto(frame_dst, frame)
-                mem_lock.release()
+                mem.get_lock().release()
                 new_frame_parent.set()
 
                 # Print when detection state changes
@@ -106,7 +104,7 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                cd.start(mem, mem_lock, new_frame_child, logging_queue)
+                cd.start(mem, new_frame_child, logging_queue)
             elif k == ord('q'):
                 logger.info("quitting")
                 raise KeyboardInterrupt
@@ -117,9 +115,7 @@ def main():
         logger.exception("")
     finally:
         cd.stop()      
-        monitor.stop() 
-        mem.close()
-        mem.unlink()
+        monitor.stop()
         logging_thread.stop()
         cv2.destroyAllWindows()
 
