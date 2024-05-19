@@ -55,31 +55,32 @@ class MonitorClient:
         # Create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.setblocking(False)
 
         # Bind socket to host/port
         self.sock.bind(('127.0.0.1', udp_port))
 
-    def read(self, timeout=0.1):
+    def read(self):
         """
-        Attempt to read a frame from the UDP socket
-
-        Parameters:
-        - timeout (float): Maximum time in seconds to wait for a frame
-
+        Attempt to read a frame from the UDP socket\n
         Returns (tuple (bool, np.ndarray)): Similar interface to VideoCapture.read(); boolean indicates whether data is valid, followed by frame data (if valid)
         """
-        # Check if data is available
-        ready = select.select([self.sock], [], [], timeout)
-        if not ready[0]:
-            return False, None # No data received within timeout
-
-        # Get frame data
-        frame_data = self.sock.recvfrom(BUFF_SIZE)[0]
+        # Get newest UDP packet
+        try:
+            frame_data = None
+            while True:
+                frame_data = self.sock.recvfrom(BUFF_SIZE)[0]
+        except BlockingIOError:
+            pass
+        
+        # Check if we got any frames
+        if frame_data == None:
+            return False, None
 
         if (START_MARKER in frame_data) and (END_MARKER in frame_data):
             # Get start and end of image
-            start_idx = frame_data.rindex(START_MARKER)
-            end_idx   = frame_data.rindex(END_MARKER) + len(END_MARKER)
+            start_idx = frame_data.index(START_MARKER)
+            end_idx   = frame_data.index(END_MARKER) + len(END_MARKER)
 
             # Convert bytes to numpy array
             frame_bytes = np.frombuffer(frame_data[start_idx:end_idx], dtype=np.uint8)
