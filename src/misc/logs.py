@@ -93,17 +93,17 @@ class QueueListener():
     """
 
     def __init__(self, queue):
-        self.__queue = queue
-        self.__thread = None
-        self.__suspend_signal = Event()
+        self._queue = queue
+        self._thread = None
+        self._suspend_signal = Event()
 
-        self.__logger = logging.getLogger(__name__)
-        self.__logger.setLevel(logging.DEBUG)
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(logging.DEBUG)
 
 
     def running(self):
         """Returns (bool): True if thread is running"""
-        return isinstance(self.__thread, Thread) and self.__thread.is_alive()
+        return isinstance(self._thread, Thread) and self._thread.is_alive()
 
 
     def start(self):
@@ -113,30 +113,31 @@ class QueueListener():
         """
         # Check running
         if self.running():
-            self.__logger.warning("Listener thread is already running")
+            self._logger.warning("Listener thread is already running")
             return
         
         # Clear 'stop' flag
-        self.__suspend_signal.clear()
+        self._suspend_signal.clear()
 
         # Create thread
-        self.__thread = Thread(
+        self._thread = Thread(
             target=QueueListener.listen, 
-            args=(self.__queue, self.__suspend_signal)
+            args=(self._queue, self._suspend_signal),
+            daemon=True
         )
 
         # Start thread
-        self.__thread.start()
+        self._thread.start()
 
 
     def stop(self):
         """Stop listener thread"""
         if not self.running(): return
 
-        self.__suspend_signal.set()
-        try: self.__thread.join(timeout=2)
-        except TimeoutError:
-            self.__logger.error("Listener thread failed to terminate")
+        self._suspend_signal.set()
+        self._thread.join(timeout=2)
+        if self._thread.is_alive():
+            self._logger.error("Listener thread failed to terminate gracefully")
 
 
     @staticmethod
