@@ -72,7 +72,7 @@ COOKING_TRIP_TIME = 10 # Duration in seconds that a blob must have a constant/po
 COOKING_RELEASE_TIME = 10 # Duration in seconds that a cooking blob must have a nagative slope in order to deregister as cooking
 
 # Blob similarity scoring
-SIM_SCORE_WEIGHTS = (1, 1, 2, 0.5) # Score weights (Overlap, distance, temperature, area)
+SIM_SCORE_WEIGHTS = (1, 4, 2, 0.1) # Score weights (Overlap, distance, temperature, area)
 SIM_SCORE_MATCH = 0.7 # Combined score threshold to declare a match
 SIM_SCORE_MIN = 0.1 # Not a match if any individual score is below this threshold
 

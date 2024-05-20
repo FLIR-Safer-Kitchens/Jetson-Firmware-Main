@@ -86,8 +86,8 @@ def main():
 
                 # Print when detection state changes
                 old = detected
-                detected = cd.cooking_detected.value
-                if detected and not old: logger.info("Cooking Detected")
+                detected = len(cd.cooking_coords) > 0
+                if detected and not old: logger.info(f"Cooking Detected at {cd.cooking_coords}")
                 elif old and not detected: logger.info("Cooking No Longer Detected")
 
                 # Display monitor output

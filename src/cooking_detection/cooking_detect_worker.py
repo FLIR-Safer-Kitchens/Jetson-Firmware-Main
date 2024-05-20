@@ -7,10 +7,12 @@ from constants import *
 from .blob import Blob
 import numpy as np
 import logging
+import time
 import cv2
 
 
-def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_det):
+
+def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords):
     """
     Main cooking detection loop
 
@@ -21,7 +23,7 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_det):
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
     - hotspot_det (multiprocessing.Value (uchar)): True if a hotspot is detected
-    - cooking_det (multiprocessing.Value (uchar)): True if cooking is detected
+    - cooking_coords (multiprocessing.Manager.list): Centroid locations (x, y) of cooking blobs
     """
 
     # === Setup ===
@@ -78,8 +80,8 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_det):
             # Raise flag if there are valid blobs
             hotspot_det.value = len(tracked_blobs) > 0
 
-            # Check for cooking
-            cooking_det.value = any(b.is_cooking() for b in tracked_blobs)
+            # Output list of cooking blob centroids
+            cooking_coords[:] = [list(b.centroid) for b in tracked_blobs if b.is_cooking()]
 
             # Output to debug monitor
             three_chan = cv2.merge([clip_norm(frame)]*3)
@@ -157,40 +159,75 @@ def find_blobs(frame):
 # Prune the list of old blobs
 # Add new blobs to list
 def match_blobs(new_blobs, old_blobs):
-    # Compare each new blob with all old blobs
-    compare_all_olds = lambda new: [new.compare(old) for old in old_blobs]
-    similarities = [compare_all_olds(new) for new in new_blobs]
 
+    # Compare new and old blobs and compute the optimal matches
+    if len(new_blobs) and len(old_blobs):
+        
+        # Compare each old blob with all new blobs
+        compare_all_news = lambda old: [old.compare(new) for new in new_blobs]
+        similarities = np.array([compare_all_news(old) for old in old_blobs])
+        
+        running = True
+        while running:
+            # For each old blob, find the new blob with the highest similarity score 
+            best_matches = np.argmax(similarities, axis=1)
+
+            # Mark a new blob as a match if
+            # - The similarity score is large enough AND
+            # - This old blob hasn't alreay selected a match
+            for r, c in enumerate(best_matches):
+                mark = lambda row, c: (row[c] > SIM_SCORE_MATCH) and (-1 not in row) 
+                if mark(similarities[r,:], c): similarities[r,c] = -1
+
+            # Make sure each new blob has only one match
+            # If there is a conflict, select the oldest old blob
+            matches = np.count_nonzero(similarities == -1, axis=0)
+            for c, cnt in enumerate(matches):
+                if cnt <= 1: continue # No conflict
+
+                # Compute ages of all matching old blobs
+                age  = lambda i: time.time() - old_blobs[i].first_detected
+                ages = [(age(r) if (s==-1) else -1) for r, s in enumerate(similarities[:,c])]
+                
+                # Mark the oldest match and zero all other scores 
+                # for this new blob to prevent it from being selected again
+                oldest = np.argmax(ages)
+                similarities[:, c] = 0
+                similarities[oldest, c] = -1
+
+                # Start over to give old blobs a chance to select a new match
+                break
+            
+            # Stop iterating after all new-blob conflicts have been resolved
+            else: running = False
+
+    # Prepare new tracked blobs list
     out = []
-    for i, row in enumerate(similarities):
-        # Find best match among old blobs
-        if len(row) == 0:
-            match_idx = None
-        else:
-            match_idx = np.argmax(row)
 
-            # Apply score threshold
-            if row[match_idx] < SIM_SCORE_MATCH:
-                match_idx = None
+    # Handle new blobs
+    if len(new_blobs):
+        # No old blobs to match with
+        if len(old_blobs) == 0:
+            return new_blobs
+        
+        for c, col in enumerate(similarities.T):
+            # Got a match, merge blobs
+            if -1 in col: 
+                match_idx = np.where(col == -1)[0][0]
+                out.append(new_blobs[c].merge(old_blobs[match_idx]))
 
-        # Got good match, merge blobs
-        if match_idx != None:
-            out.append(new_blobs[i].merge(old_blobs[match_idx]))
-            similarities[i][match_idx] = -1 # Mark match
+            # No matches, add new blob
+            else: out.append(new_blobs[c])  
 
-        # No good matches, add new blob
-        else: out.append(new_blobs[i])
+    # Handle old blobs
+    for r in range(len(old_blobs)):
 
-    # Handle unmatched old blobs
-    for c in range(len(old_blobs)):
-        if (len(similarities) > c) and (-1 in [row[c] for row in similarities]):
-            continue
+        # Decrement score if there were no matches
+        if (len(new_blobs) == 0) or (-1 not in similarities[r,:]):
+            old_blobs[r].lives -= 1
 
-        # Decrement score
-        old_blobs[c].lives -= 1
-
-        # Keep unmatched blobs until their scores hit 0
-        if old_blobs[c].lives > 0:
-            out.append(old_blobs[c])
+            # Keep unmatched blobs until their scores hit 0
+            if old_blobs[r].lives > 0:
+                out.append(old_blobs[r])
 
     return out

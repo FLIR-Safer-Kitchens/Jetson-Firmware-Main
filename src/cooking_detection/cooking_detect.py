@@ -1,7 +1,7 @@
 """Cooking detection launcher"""
 
 from .cooking_detect_worker import cooking_detect_worker
-from multiprocessing import Value
+from multiprocessing import Value, Manager
 from ctypes import c_bool
 from misc import Launcher
 import logging
@@ -16,9 +16,9 @@ class CookingDetect(Launcher):
         self.logger.setLevel(logging.DEBUG)
 
         # Detection flags
-        self.blobs_detected   = Value(c_bool, False)
-        self.cooking_detected = Value(c_bool, False)
-        
+        self.blobs_detected = Value(c_bool, False)
+        self.cooking_coords = Manager().list()
+
 
     def start(self, raw16_mem, frame_event, log_queue):
         """
@@ -39,6 +39,6 @@ class CookingDetect(Launcher):
                 log_queue,
                 self.exception_queue,
                 self.blobs_detected,
-                self.cooking_detected
+                self.cooking_coords
             )
         )
