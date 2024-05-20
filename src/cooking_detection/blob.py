@@ -65,8 +65,14 @@ class Blob:
         self.new_data_flag = False
 
 
-    # Compare blobs. Return similarity score [0, 1] where 1 is a perfect match
     def compare(self, other):
+        """
+        Compare two blobs\n
+        Parameters:
+        - other (Blob): The blob to compare with
+
+        Returns (float): Similarity score [0, 1] where 1 is a perfect match
+        """
         # 1. Overlap score
         # [0, 1] 1 for full overlap
         over    = cv2.bitwise_and(self.mask, other.mask)
@@ -97,8 +103,14 @@ class Blob:
         return score
 
 
-    # Combine two blobs
     def merge(self, other):
+        """
+        Combine two blobs\n
+        Parameters:
+        - other (Blob): The blob to combine with
+
+        Returns (Blob): The combined blob object
+        """
         # Find oldest/youngest blob
         old, new = sorted([self, other], key=lambda b: b.first_detected)
 
@@ -121,8 +133,11 @@ class Blob:
         return new
 
 
-    # Examine history and determine if the blob is associated with cooking
     def is_cooking(self):
+        """
+        Examine history and determine if the blob is associated with cooking\n
+        Returns (bool): True if blob is associated with cooking
+        """
         # If there's no new data,
         # return most recent value
         if not self.new_data_flag:
@@ -158,8 +173,14 @@ class Blob:
         return self._cooking.value
 
 
-    # Draw the blob and its centroid
     def draw_blob(self, image):
+        """
+        Draw the blob and its centroid on an image\n
+        Parameters:
+        - image (numpy.ndarray): The image to draw on
+
+        Returns (numpy.ndarray): The annotated image
+        """
         # Detected in this frame
         if self.lives == BLOB_LIVES:
             cv2.drawContours(image, [self.contour], -1, tuple(self.color), cv2.FILLED)
@@ -168,8 +189,3 @@ class Blob:
             cv2.circle(image, self.centroid, 1, (0, 0, 255), -1)
 
         return image
-
-
-    # TODO?
-    def fire_detected(self):
-        pass

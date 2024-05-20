@@ -107,9 +107,15 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords
     else: logger.debug("Termination routine completed. Exiting...")
 
 
-# Find blobs in image
-# Return a list of blobs
 def find_blobs(frame):
+    """
+    Find blobs in image\n
+    Parameters:
+    - frame (numpy.ndarray): The raw, 16-bit thermal image
+
+    Returns (list (Blob)): A list of detected blob objects
+    """
+
     # Clip cold pixels and convert to 8-bit
     clipped = clip_norm(
         img = frame,
@@ -154,29 +160,34 @@ def find_blobs(frame):
     return [Blob(c, frame) for c in contours]
 
 
-# Compare newly extracted blobs to old blobs
-# Decimate the list of new blobs
-# Prune the list of old blobs
-# Add new blobs to list
 def match_blobs(new_blobs, old_blobs):
+    """
+    Compare newly extracted blobs to old blobs.\n
+    Prune the list of old blobs and add new blobs to list.\n
+    Parameters:
+    - new_blobs (list (Blob)): The list of new blob objects to merge and/or add
+    - old_blobs (list (Blob)): The list of old blobs to purge and/or merge with
+
+    Returns (list (Blob)): The updated list of tracked blobs
+    """
 
     # Compare new and old blobs and compute the optimal matches
     if len(new_blobs) and len(old_blobs):
-        
+
         # Compare each old blob with all new blobs
         compare_all_news = lambda old: [old.compare(new) for new in new_blobs]
         similarities = np.array([compare_all_news(old) for old in old_blobs])
-        
+
         running = True
         while running:
-            # For each old blob, find the new blob with the highest similarity score 
+            # For each old blob, find the new blob with the highest similarity score
             best_matches = np.argmax(similarities, axis=1)
 
             # Mark a new blob as a match if
             # - The similarity score is large enough AND
             # - This old blob hasn't alreay selected a match
             for r, c in enumerate(best_matches):
-                mark = lambda row, c: (row[c] > SIM_SCORE_MATCH) and (-1 not in row) 
+                mark = lambda row, c: (row[c] > SIM_SCORE_MATCH) and (-1 not in row)
                 if mark(similarities[r,:], c): similarities[r,c] = -1
 
             # Make sure each new blob has only one match
@@ -188,8 +199,8 @@ def match_blobs(new_blobs, old_blobs):
                 # Compute ages of all matching old blobs
                 age  = lambda i: time.time() - old_blobs[i].first_detected
                 ages = [(age(r) if (s==-1) else -1) for r, s in enumerate(similarities[:,c])]
-                
-                # Mark the oldest match and zero all other scores 
+
+                # Mark the oldest match and zero all other scores
                 # for this new blob to prevent it from being selected again
                 oldest = np.argmax(ages)
                 similarities[:, c] = 0
@@ -197,7 +208,7 @@ def match_blobs(new_blobs, old_blobs):
 
                 # Start over to give old blobs a chance to select a new match
                 break
-            
+
             # Stop iterating after all new-blob conflicts have been resolved
             else: running = False
 
@@ -209,15 +220,15 @@ def match_blobs(new_blobs, old_blobs):
         # No old blobs to match with
         if len(old_blobs) == 0:
             return new_blobs
-        
+
         for c, col in enumerate(similarities.T):
             # Got a match, merge blobs
-            if -1 in col: 
+            if -1 in col:
                 match_idx = np.where(col == -1)[0][0]
                 out.append(new_blobs[c].merge(old_blobs[match_idx]))
 
             # No matches, add new blob
-            else: out.append(new_blobs[c])  
+            else: out.append(new_blobs[c])
 
     # Handle old blobs
     for r in range(len(old_blobs)):
