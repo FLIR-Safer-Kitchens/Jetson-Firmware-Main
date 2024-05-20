@@ -69,9 +69,9 @@ class Blob:
     def compare(self, other):
         # 1. Overlap score
         # [0, 1] 1 for full overlap
-        diff    = cv2.bitwise_xor(self.mask, other.mask)
-        n_diff  = cv2.countNonZero(diff)
-        overlap = 1.0 - n_diff / (self.area + other.area)
+        over    = cv2.bitwise_and(self.mask, other.mask)
+        n_over  = cv2.countNonZero(over)
+        overlap = n_over / min(self.area, other.area)
 
         # 2. Centroid distance score
         # [0, 1] 1 for idetical centroids
