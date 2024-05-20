@@ -84,6 +84,9 @@ USER_MIN_CONFIDENCE = 0.6 # Confidence threshold for user detection [0,1]
 USER_MOVEMENT_DIST_THRESH = 20 # Pixel distance that a bounding box must move to be considered movement
 USER_MOVEMENT_TIME_THRESH = 15*60 # Maximum time in seconds that a person can stay stationary before being considered invalid
 
+# Local port that the node.js server uses
+NODE_SERVER_PORT = 3000 
+
 # Live streaming constants
 UDP_PORT = 12345
 HLS_DIRECTORY = "C:/Users/sdhla/Documents/GitHub/Capstone/Jetson-Firmware-Main/src/streaming/hls/" # Directory where stream segments and .m3u8 will be stored. Absolute path preferred
