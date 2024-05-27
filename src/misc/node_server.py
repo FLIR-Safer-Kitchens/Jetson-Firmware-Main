@@ -72,7 +72,7 @@ class NodeServer:
         Recieve control flags from node.js server
         
         Parameters:
-        - data (list): List of arguments received from the server
+        - data (dict): Dict of control flags from node server
         """
         # Parse data, update variables
         if "setupComplete" in data: 
