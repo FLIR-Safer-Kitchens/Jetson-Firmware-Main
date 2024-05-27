@@ -12,7 +12,7 @@ import cv2
 
 
 
-def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords):
+def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
     """
     Main cooking detection loop
 
@@ -22,7 +22,6 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
-    - hotspot_det (multiprocessing.Value (uchar)): True if a hotspot is detected
     - cooking_coords (multiprocessing.Manager.list): Centroid locations (x, y) of cooking blobs
     """
 
@@ -77,9 +76,6 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords
             # Compare and match blobs
             tracked_blobs = match_blobs(new_blobs, tracked_blobs)
 
-            # Raise flag if there are valid blobs
-            hotspot_det.value = len(tracked_blobs) > 0
-
             # Output list of cooking blob centroids
             cooking_coords[:] = [list(b.centroid) for b in tracked_blobs if b.is_cooking()]
 
@@ -98,6 +94,7 @@ def cooking_detect_worker(mem, new, stop, log, errs, hotspot_det, cooking_coords
     # === Terminate ===
     try:
         monitor.stop()
+        cooking_coords[:] = []
 
     # Add errors to queue
     except BaseException as err:
