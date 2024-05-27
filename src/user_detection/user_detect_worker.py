@@ -111,7 +111,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
                 det_info = []
                 for i, box in enumerate(boxes):
                     x1, y1, x2, y2 = box
-                    det_info.append(f"{x1:d} {y1:d} {x2:d} {y2:d}")
+                    det_info.append(f"{int(x1)} {int(y1)} {int(x2)} {int(y2)}")
                     det_info.append(confs[i])
 
                 csv_writer.writerow([time.time(), frame_index, tm] + det_info)
