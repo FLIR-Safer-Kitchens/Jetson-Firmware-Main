@@ -67,8 +67,11 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if (user.running() != running):
-                raise ValueError(f"Expected {running}. Got {user.running()}.")
+            if user.running() != running:
+                ret = user.handle_exceptions()
+                assert ret, "User detection process not recoverable"
+                logger.warning("Attempting to restart user detection process")
+                user.start(mem, new_frame_child, logging_queue)
             
             # Get webcam frame
             ret, frame = vid.read()

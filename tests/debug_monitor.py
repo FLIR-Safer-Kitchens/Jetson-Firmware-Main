@@ -1,5 +1,4 @@
-"""Tests the dedug monitor module"""
-
+"""Tests the debug monitor module"""
 
 # Add parent directory to the Python path
 import os.path as path

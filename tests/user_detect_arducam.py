@@ -62,8 +62,17 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if (user.running() != running) or (cam.running() != running):
-                raise ValueError(f"Expected {running}, {running}. Got {user.running()}, {cam.running()}.")
+            if user.running() != running:
+                ret = user.handle_exceptions()
+                assert ret, "User detection process not recoverable"
+                logger.warning("Attempting to restart user detection process")
+                user.start(mem, new_frame_child, logging_queue)
+            
+            if not cam.running() != running:
+                ret = cam.handle_exceptions()
+                assert ret, "Arducam polling process not recoverable"
+                logger.warning("Attempting to restart arducam polling process")
+                cam.start(mem, new_frame_parent, logging_queue)
             
             # Print when detection state changes
             old = detected

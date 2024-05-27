@@ -74,8 +74,11 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if pt.running() != running:
-                raise ValueError(f"Expected {running}. Got {pt.running()}.")
+            if (pt.running() != running):
+                ret = pt.handle_exceptions()
+                assert ret, "Lepton polling process not recoverable"
+                logger.warning("Attempting to restart lepton polling process")
+                pt.start(mem, new_frame_child, logging_queue)
 
             if running and new_frame_child.is_set():
                 new_frame_child.clear()

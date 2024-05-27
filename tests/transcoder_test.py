@@ -43,7 +43,7 @@ def main():
 
     # Create transcoder launcher object
     tc = Transcoder()
-
+    
     cv2.namedWindow("control", cv2.WINDOW_NORMAL)
 
     # Create video capture object
@@ -62,9 +62,12 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if tc.running() != running:
-                raise ValueError(f"Expected {running}. Got {tc.running()}.")
-
+            if (tc.running() != running):
+                ret = tc.handle_exceptions()
+                assert ret, "Transcoder process not recoverable"
+                logger.warning("Attempting to restart transcoder process")
+                tc.start(mem, new_frame_child, logging_queue)
+            
             if running:
                 # Grab frame
                 ret, frame = vid.read()

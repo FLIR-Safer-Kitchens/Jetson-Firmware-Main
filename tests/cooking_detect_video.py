@@ -70,8 +70,11 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if cd.running() != running:
-                raise ValueError(f"Expected {running}. Got {cd.running()}.")
+            if (cd.running() != running):
+                ret = cd.handle_exceptions()
+                assert ret, "Cooking detection process not recoverable"
+                logger.warning("Attempting to restart cooking detection process")
+                cd.start(mem, new_frame_child, logging_queue)
 
             if running:
                 # Grab frame

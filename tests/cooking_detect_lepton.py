@@ -63,8 +63,17 @@ def main():
                 logging_thread.start()
 
             # Check worker status
-            if (cd.running() != running) or (pt.running() != running):
-                raise ValueError(f"Expected {running}. Got {cd.running()}, {pt.running()}.")
+            if (cd.running() != running):
+                ret = cd.handle_exceptions()
+                assert ret, "Cooking detection process not recoverable"
+                logger.warning("Attempting to restart cooking detection process")
+                cd.start(mem, new_frame_child, logging_queue)
+            
+            if (pt.running() != running):
+                ret = pt.handle_exceptions()
+                assert ret, "Lepton polling process not recoverable"
+                logger.warning("Attempting to restart lepton polling process")
+                pt.start(mem, new_frame_parent, logging_queue)
 
             if running:
                 # Print when detection state changes
