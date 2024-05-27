@@ -12,6 +12,8 @@ import time
 import cv2
 import os
 
+import csv # FOR TESTING
+
 # System-dependent imports
 if platform.system() == 'Windows':
     from ultralytics import YOLO
@@ -44,7 +46,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
         logger.setLevel(logging.DEBUG)
 
         # Create a UDP server to send images to for debugging
-        monitor = MonitorServer(12346)
+        monitor = MonitorServer(12346, 12350)
 
         # Choose detector based on system
         logger.debug("Intializing detector")
@@ -63,6 +65,15 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
 
         # Detection state
         user_detected = HysteresisBool(2, 4)
+
+        # ========== For testing ===========
+        # Initialize csv
+        frame_index = 0
+        csv_filename = f'user_det_log_{round(time.time())}.csv'
+        with open(csv_filename, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Timestamp', "Index", "Inference Time", "BBox", "Conf"])
+        # ==================================
 
     # Add errors to queue
     except BaseException as err:
@@ -91,6 +102,26 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
 
             # Log detection time
             logger.debug(f"Inference time: {tm*1000:5.2f}ms")
+
+            # ========== For testing ===========
+            with open(csv_filename, 'a', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                frame_index += 1
+
+                det_info = []
+                for i, box in enumerate(boxes):
+                    x1, y1, x2, y2 = box
+                    det_info.append(f"{x1:d} {y1:d} {x2:d} {y2:d}")
+                    det_info.append(confs[i])
+
+                csv_writer.writerow([time.time(), frame_index, tm] + det_info)
+                csvfile.flush()
+
+            # Add index to frame
+            tl = 3
+            tf = 2
+            cv2.putText(frame, str(frame_index), (5, 480-5), 0, tl/2, [0, 0, 255], thickness=tf, lineType=cv2.LINE_AA,)
+            # ==================================
 
             # Show debug output on monitor
             for i, box in enumerate(boxes):
