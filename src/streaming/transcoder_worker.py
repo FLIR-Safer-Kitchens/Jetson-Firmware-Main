@@ -10,6 +10,9 @@ import socket
 import cv2
 import os
 
+# Maximum UDP packet size
+BUFF_SIZE = 65507
+
 
 def transcoder_worker(mem, new, stop, log, errs):
     """
@@ -60,9 +63,6 @@ def transcoder_worker(mem, new, stop, log, errs):
             # Check transcoder process
             assert transcode_proc.poll() == None
 
-            # Dump subprocess stdout and stderr
-            # log_output(transcode_proc, logger)
-
             # Wait for new frame
             if not new.wait(timeout=0.5): continue
             else: new.clear()
@@ -77,7 +77,10 @@ def transcoder_worker(mem, new, stop, log, errs):
             color_frame = cv2.applyColorMap(frame, cv2.COLORMAP_INFERNO)
 
             # Convert frame to bytes
-            frame_bytes = cv2.imencode('.jpg', color_frame)[1].tobytes()
+            frame_bytes = cv2.imencode('.jpg', color_frame, [cv2.IMWRITE_JPEG_QUALITY, 100])[1].tobytes()
+            if len(frame_bytes) > BUFF_SIZE:
+                logger.warning(f"Packet too large. ({len(frame_bytes)}>{BUFF_SIZE})")
+                continue
 
             # Transmit frame via UDP socket
             sock.sendto(frame_bytes, ('127.0.0.1', UDP_PORT))
@@ -96,10 +99,7 @@ def transcoder_worker(mem, new, stop, log, errs):
         except sp.TimeoutExpired:
             logger.warning("ffmpeg process would not terminate gracefully. Killing...")
             transcode_proc.kill()
-
-        # Emit any lingering error messages
-        # log_output(transcode_proc, logger)
-
+    
         # Shut down UDP socket
         sock.close()
 
@@ -123,8 +123,9 @@ def start_transcoder():
         '-c:v',                  'libx264',                     # Video codec
         '-preset',               'ultrafast',                   # Preset for faster encoding
         '-f',                    'hls',                         # Output format HLS
-        '-hls_time',             '10',                          # Segment duration (in seconds)
-        '-hls_list_size',        '2',                           # Maximum number of playlist entries
+        '-g',                    '60',                          # Number of frames between 2 keyframes (2s @ 30fps = 60)
+        '-hls_time',             '2',                           # Segment duration (in seconds)
+        '-hls_list_size',        '5',                           # Maximum number of playlist entries
         '-hls_flags',            'delete_segments+append_list', # HLS flags
         '-hls_segment_filename', 
         os.path.join(HLS_DIRECTORY, 'segment%d.ts'), # Segment filename pattern
@@ -132,18 +133,6 @@ def start_transcoder():
     ]
 
     # Launch the subprocess with output redirection
-    return sp.Popen(command, stdout=sp.DEVNULL, stderr=sp.STDOUT, text=True)
-
-
-def log_output(proc, logger):
-    """
-    Log stdout and stderr from subprocess
-    
-    Arguments:
-    - proc (subprocess.Popen): Process to be checked
-    - logger (logging.Logger): logger to log to
-    """
-
-    text = proc.stdout.readline()
-    if len(text):
-        logger.error(f"ffmpeg stderr: {text}")
+    log_file_path = os.path.join(os.path.dirname(__file__), 'ffmpeg.log')
+    with open(log_file_path, "w") as log_file:
+        return sp.Popen(command, stdout=log_file, stderr=log_file)

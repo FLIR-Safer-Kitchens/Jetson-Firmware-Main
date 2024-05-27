@@ -4,5 +4,7 @@ junk/
 src/streaming/hls/
 tests/vids
 *.tiff
+*.log
+*.csv
 
 __pycache__/
