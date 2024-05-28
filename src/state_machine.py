@@ -2,6 +2,7 @@
 
 from misc.node_server import NodeServer
 from misc.launcher import Launcher
+from misc.alarm import AlarmBoard
 import logging
 import time
 
@@ -27,10 +28,9 @@ class WorkerProcess:
         # Expose launcher functions
         self.running = self.launcher.running
         self.handle_exceptions = self.launcher.handle_exceptions
-        self.stop = self.launcher.start
 
     def start(self):
-        self.launcher.start(self.start_args)
+        self.launcher.start(*self.start_args)
 
     def stop(self, check_exceptions=False):
         self.launcher.stop()
@@ -46,7 +46,8 @@ class StateMachine:
 
     def __init__( 
             self,
-            node_server:    NodeServer,    
+            node_server:    NodeServer,  
+            alarm_board:    AlarmBoard,
             arducam:        WorkerProcess,
             purethermal:    WorkerProcess, 
             user_detect:    WorkerProcess, 
@@ -75,6 +76,9 @@ class StateMachine:
         # Store node server object
         self.node_server = node_server
 
+        # Store alarm board
+        self.alarm_board = alarm_board
+
         # Store worker process objects
         self.arducam = arducam
         self.purethermal = purethermal
@@ -97,20 +101,20 @@ class StateMachine:
 
         # Macro for pausing user detection
         # TODO: Does this work lol
-        self.user_detection_enabled = self.user_detect.args[2].enabled
+        self.user_detection_enabled = self.user_detect.start_args[1].enabled
 
         # Helpful lambdas for getting process outputs
         self.hotspots_detected    = lambda: self.purethermal.launcher.hotspot_detected.value
-        self.max_temp             = lambda: self.purethermal.launcher.max_temp
-        self.cooking_coords       = lambda: self.cooking_detect.launcher.cooking_coords
+        self.max_temp             = lambda: self.purethermal.launcher.max_temp.value
+        self.cooking_coords       = lambda: self.cooking_detect.launcher.cooking_coords[:]
         self.unattended_time      = lambda: (time.time() - self.user_detect.launcher.last_detected.value)
 
         # Add an attribute to indicate when a worker should be on
-        self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE
-        self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or self.livestream_active()
+        self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM
+        self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or self.livestream_active
         self.user_detect.on_condition    = lambda: self.current_state != STATE_SETUP
-        self.cooking_detect.on_condition = lambda: self.current_state == STATE_ACTIVE
-        self.livestream.on_condition     = lambda: self.livestream_active()
+        self.cooking_detect.on_condition = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM
+        self.livestream.on_condition     = lambda: self.livestream_active
 
 
     def _set_state(self, next_state):
@@ -128,7 +132,7 @@ class StateMachine:
         if self.current_state == STATE_SETUP:
             # Start lepton and load user detection model
             if next_state == STATE_IDLE:
-                if not self.purethermal.running: 
+                if not self.purethermal.running():
                     self.purethermal.start()
 
                 # Start user detection but disable it
@@ -165,8 +169,7 @@ class StateMachine:
 
             # Leave everything running
             elif next_state == STATE_ALARM:
-                print("Alarm triggered")
-                pass
+                self.alarm_board.startAlarm()
 
             # Disable user detection, shut down arducam and cooking detection
             elif next_state == STATE_IDLE:
@@ -181,6 +184,7 @@ class StateMachine:
         elif self.current_state == STATE_ALARM:
             # Shut down lepton, cooking detection, arducam, user detection
             if next_state == STATE_SETUP:
+                self.alarm_board.stopAlarm()
                 self.cooking_detect.stop()
                 self.user_detect.stop()
                 self.purethermal.stop()
@@ -188,6 +192,7 @@ class StateMachine:
 
             # Disable user detection, shut down arducam and cooking detection
             elif next_state == STATE_IDLE:
+                self.alarm_board.stopAlarm()
                 self.cooking_detect.stop()
                 self.user_detection_enabled = False
                 self.arducam.stop()
@@ -234,11 +239,12 @@ class StateMachine:
         """
 
         # === Report Status to Node.js ===
-        # TODO: set reporting rate in module
+        m3u8_path = self.livestream.launcher.m3u8_path if self.livestream_active else None
         self.node_server.send_status(
             cooking_coords = self.cooking_coords(),
             max_temp = self.max_temp(),
-            unattended_time=self.unattended_time()
+            unattended_time=self.unattended_time(),
+            m3u8_path=m3u8_path
         )
 
         # === Handle Livestream ===

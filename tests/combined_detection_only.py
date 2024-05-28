@@ -19,26 +19,26 @@ import logging
 import cv2
 
 # Switch between stubs and real modules
-from misc.alarm import AlarmBoard
-# from stubs import AlarmBoard
+# from misc.alarm import AlarmBoard
+from stubs import AlarmBoard
 
-from misc.node_server import NodeServer
-# from stubs import NodeServer
+# from misc.node_server import NodeServer
+from stubs import NodeServer
 
-from arducam import Arducam
-# from stubs import Arducam
+# from arducam import Arducam
+from stubs import Arducam
 
-from lepton.polling import PureThermal
-# from stubs import PureThermal
+# from lepton.polling import PureThermal
+from stubs import PureThermal
 
-from user_detection import UserDetect
-# from stubs import UserDetect
+# from user_detection import UserDetect
+from stubs import UserDetect
 
-from cooking_detection import CookingDetect
-# from stubs import CookingDetect
+# from cooking_detection import CookingDetect
+from stubs import CookingDetect
 
-from streaming import Transcoder
-# from stubs import Transcoder
+# from streaming import Transcoder
+from stubs import Transcoder
 
 
 
@@ -86,6 +86,7 @@ def main():
     # Pass launchers and their arguments to the main state machine
     state_machine = StateMachine(
         node_server=node,
+        alarm_board=alarm,
         arducam=WorkerProcess(
             name="Arducam",
             launcher=arducam_proc,
@@ -191,6 +192,10 @@ def main():
 
         # Shut down node server connection
         node.disconnect()
+
+        # Close alarm board connection
+        alarm.stopAlarm()
+        alarm.disconnect()
 
         # Shut down monitor windows
         user_monitor.stop()

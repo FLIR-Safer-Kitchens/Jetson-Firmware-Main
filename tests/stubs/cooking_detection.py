@@ -17,16 +17,16 @@ import time
 SOCKET_PORT = 15670
 
 
-def worker(stop, vis_mem, frame_event, log_queue):
+def worker(stop, raw16_mem, frame_event, log_queue):
     getting_frames = False
     last_frame = 0
 
     while not stop.is_set():
         if getting_frames and (time.time() - last_frame) > 2:
-            print("User detection no longer getting frames")
+            print("Cooking detection no longer getting frames")
             getting_frames = False
         if not getting_frames and (time.time() - last_frame) < 1:
-            print("User detection getting frames")
+            print("Cooking detection getting frames")
             getting_frames = True
 
         # Wait for new frame

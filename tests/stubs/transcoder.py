@@ -10,18 +10,29 @@ from constants import HLS_DIRECTORY, HLS_M3U8_FILENAME
 from stubs import Launcher
 import threading
 import logging
+import time
 import os
 
 SOCKET_PORT = 15696
 
 
 def worker(stop, raw16_mem, frame_event, log_queue):
+    getting_frames = False
+    last_frame = 0
+
     while not stop.is_set():
+        if getting_frames and (time.time() - last_frame) > 2:
+            print("Transcoder no longer getting frames")
+            getting_frames = False
+        if not getting_frames and (time.time() - last_frame) < 1:
+            print("Transcoder getting frames")
+            getting_frames = True
+
         # Wait for new frame
         if not frame_event.wait(timeout=0.5): continue
         else: frame_event.clear()
 
-        # print("Got frame")
+        last_frame = time.time()
 
 
 class Transcoder(Launcher):
