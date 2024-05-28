@@ -1,7 +1,7 @@
 """Worker that performs cooking detection"""
 
+from misc.logs import configure_subprocess_log
 from lepton.utils import clip_norm, temp2raw
-from misc.logs import configure_subprocess
 from misc.monitor import MonitorServer
 from constants import *
 from .blob import Blob
@@ -32,7 +32,7 @@ def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
         logger.setLevel(logging.DEBUG)
 
         # Set up logs for subprocess
-        configure_subprocess(log)
+        configure_subprocess_log(log)
 
         # Create a UDP server to send images to for debugging
         monitor = MonitorServer(12347)

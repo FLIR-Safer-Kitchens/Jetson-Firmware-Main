@@ -5,7 +5,7 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from misc.logs import configure_main
+from misc.logs import configure_main_log
 import threading
 import time
 
@@ -38,7 +38,7 @@ def show_changes(stop, node):
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create server object
     node = NodeServer()

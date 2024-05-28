@@ -2,7 +2,7 @@
 
 from .cooking_detect_worker import cooking_detect_worker
 from multiprocessing import Manager
-from misc import Launcher
+from misc.launcher import Launcher
 import logging
 
 

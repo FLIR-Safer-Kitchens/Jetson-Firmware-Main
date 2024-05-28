@@ -1,7 +1,7 @@
 """Arducam polling launcher"""
 
 from .polling_worker import polling_worker
-from misc import Launcher
+from misc.launcher import Launcher
 import logging
 
 

@@ -3,9 +3,9 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
+from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
 from constants import RAW_THERMAL_SHAPE
-from misc import NewFrameEvent
 from ctypes import c_uint16
 from constants import *
 from misc.logs import *
@@ -22,7 +22,7 @@ from misc.node_server import NodeServer
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create logger
     logger = logging.getLogger(__name__)

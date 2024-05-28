@@ -2,7 +2,7 @@
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
-from misc.logs import configure_main
+from misc.logs import configure_main_log
 import logging
 
 from misc.alarm import AlarmBoard
@@ -11,7 +11,7 @@ from misc.alarm import AlarmBoard
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create logger
     logger = logging.getLogger(__name__)

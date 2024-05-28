@@ -1,9 +1,9 @@
 """User detection launcher"""
 
 from .user_detect_worker import user_detect_worker
+from  misc.launcher import Launcher
 from  multiprocessing import Value
 from ctypes import c_double
-from  misc import Launcher
 import logging
 
 

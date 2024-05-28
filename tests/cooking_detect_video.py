@@ -5,11 +5,11 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
+from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
 from lepton.file_utils import Raw16Video
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
-from misc import NewFrameEvent
 from ctypes import c_uint16
 from misc.logs import *
 import numpy as np
@@ -21,7 +21,7 @@ from cooking_detection import CookingDetect
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create logger
     logger = logging.getLogger(__name__)

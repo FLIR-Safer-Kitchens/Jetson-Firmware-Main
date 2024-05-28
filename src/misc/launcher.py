@@ -60,6 +60,8 @@ class Launcher:
         if len(fatal_errs):
             err_names = ", ".join([str(type(err)) for err in fatal_errs])
             self.logger.error(f"Got {len(fatal_errs)} fatal error(s): " + err_names)
+            for ex in fatal_errs:
+                self.logger.exception("", exc_info=ex)
             return False
         
         # Add non-fatal errors to exception history

@@ -5,9 +5,9 @@ import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 from misc.monitor import MonitorClient, RecordingClient
+from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
 from constants import VISIBLE_SHAPE
-from misc import NewFrameEvent
 from ctypes import c_uint8
 from misc.logs import *
 import numpy as np
@@ -23,7 +23,7 @@ from user_detection import UserDetect
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create logger
     logger = logging.getLogger(__name__)

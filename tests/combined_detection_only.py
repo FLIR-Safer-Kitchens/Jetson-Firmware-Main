@@ -7,9 +7,9 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__
 # Muliprocessing stuff
 from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
 from state_machine import StateMachine, WorkerProcess
+from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
 from ctypes import c_uint8, c_uint16
-from misc import NewFrameEvent
 import numpy as np
 
 # Debugging stuff
@@ -44,7 +44,7 @@ from streaming import Transcoder
 
 def main():
     # Configure logger
-    configure_main(False, True)
+    configure_main_log(False, True)
 
     # Create logger
     logger = logging.getLogger(__name__)

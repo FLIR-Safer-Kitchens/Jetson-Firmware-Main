@@ -36,7 +36,7 @@ class SizeLimitedQueueHandler(QueueHandler):
 
 
 
-def configure_subprocess(queue, loglevel=logging.DEBUG):
+def configure_subprocess_log(queue, loglevel=logging.DEBUG):
     """
     Called from within a subprocess to initialize logs
 
@@ -56,7 +56,7 @@ def configure_subprocess(queue, loglevel=logging.DEBUG):
 
 
 
-def configure_main(to_file=True, to_term=True):
+def configure_main_log(to_file=True, to_term=True):
     """
     Configure the logger for the main process
     

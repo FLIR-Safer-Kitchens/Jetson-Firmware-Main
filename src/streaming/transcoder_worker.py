@@ -1,6 +1,6 @@
 """Handles transcoding from raw thermal video to colorized HLS stream"""
 
-from misc.logs import configure_subprocess
+from misc.logs import configure_subprocess_log
 from lepton.utils import clip_norm
 import subprocess as sp
 from constants import *
@@ -34,7 +34,7 @@ def transcoder_worker(mem, new, stop, log, errs):
         logger.setLevel(logging.DEBUG)
 
         # Set up logs for subprocess
-        configure_subprocess(log)
+        configure_subprocess_log(log)
 
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())

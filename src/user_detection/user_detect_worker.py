@@ -1,7 +1,7 @@
 """Worker that performs user detection"""
 
+from misc.logs import configure_subprocess_log
 from misc.hysteresis import HysteresisBool
-from misc.logs import configure_subprocess
 from misc.monitor import MonitorServer
 from constants import *
 import numpy as np
@@ -39,7 +39,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
     # === Setup ===
     try:
         # Set up logs for subprocess
-        configure_subprocess(log)
+        configure_subprocess_log(log)
 
         # Create logger
         logger = logging.getLogger(__name__)

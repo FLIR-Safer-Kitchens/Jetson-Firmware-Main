@@ -1,19 +1,44 @@
 """State machine for main process"""
 
-from cooking_detection import CookingDetect
-from lepton.polling import PureThermal
-from user_detection import UserDetect
-from constants import BLOB_MIN_TEMP
-from arducam import Arducam
-import winsound
+from misc.node_server import NodeServer
+from misc.launcher import Launcher
 import logging
 import time
 
 # System states
-STATE_RESET   = "Reset"
 STATE_SETUP   = "Setup"
 STATE_IDLE    = "Idle"
 STATE_ACTIVE  = "Active"
+STATE_ALARM   = "Alarm"
+
+
+class WorkerProcess:
+    """Wrapper for worker proceses"""
+
+    def __init__(self, name, launcher: Launcher, start_args):
+        # Save worker info
+        self.name = name
+        self.launcher = launcher
+        self.start_args = start_args
+
+        # Lambda to indicate when the worker should be active
+        self.on_condition = lambda: False
+
+        # Expose launcher functions
+        self.running = self.launcher.running
+        self.handle_exceptions = self.launcher.handle_exceptions
+        self.stop = self.launcher.start
+
+    def start(self):
+        self.launcher.start(self.start_args)
+
+    def stop(self, check_exceptions=False):
+        self.launcher.stop()
+        if check_exceptions:
+            return self.launcher.handle_exceptions()
+        else:
+            return True
+
 
 
 class StateMachine:
@@ -21,16 +46,17 @@ class StateMachine:
 
     def __init__( 
             self,
-            arducam: Arducam, 
-            arducam_args,
-            purethermal: PureThermal, 
-            purethermal_args,
-            user_detect: UserDetect, 
-            user_detect_args,
-            cooking_detect: CookingDetect,
-            cooking_detect_args
+            node_server:    NodeServer,    
+            arducam:        WorkerProcess,
+            purethermal:    WorkerProcess, 
+            user_detect:    WorkerProcess, 
+            cooking_detect: WorkerProcess,
+            livestream:     WorkerProcess
         ):
         """
+
+        TODO: UPDATE
+
         Parameters:
         - arducam (arducam.Arducam): Arducam polling launcher
         - arducam_args (tuple): Arguments to pass to the launcher's start() method
@@ -45,50 +71,52 @@ class StateMachine:
         # Get logger
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
+    
+        # Store node server object
+        self.node_server = node_server
 
-        # Store launcher objects
-        # Add an attribute for the worker's name
-        # TODO: Not sure if it's good practice to add extra attributes like this, maybe add to Launcher?
-        self.arducam      = arducam
-        self.arducam.args = arducam_args
-        self.arducam.name = "Arducam"
-
-        self.purethermal      = purethermal
-        self.purethermal.args = purethermal_args
-        self.purethermal.name = "PureThermal"
-
-        self.user_detect      = user_detect
-        self.user_detect.args = user_detect_args
-        self.user_detect.name = "User Detect"
-
-        self.cooking_detect      = cooking_detect
-        self.cooking_detect.args = cooking_detect_args
-        self.cooking_detect.name = "Cooking Detect"
+        # Store worker process objects
+        self.arducam = arducam
+        self.purethermal = purethermal
+        self.user_detect = user_detect
+        self.cooking_detect = cooking_detect
+        self.livestream = livestream
 
         # Bundle workers for easier iteration
-        self.workers = (self.arducam, self.purethermal, self.user_detect, self.cooking_detect)
+        self.workers = (
+            self.arducam, 
+            self.purethermal, 
+            self.user_detect, 
+            self.cooking_detect, 
+            self.livestream
+        )
 
         # Initialize system state
-        self.current_state = STATE_RESET
-        self.alarm_active = False
+        self.current_state = STATE_SETUP
         self.livestream_active = False
 
-        # Helpful lambdas for checking conditions
-        self.hotspots_detected    = lambda: self.purethermal.hotspot_detected.value
-        self.valid_blobs_detected = lambda: self.cooking_detect.blobs_detected.value
-        self.cooking_detected     = lambda: self.cooking_detect.cooking_detected.value
-        self.unattended           = lambda: (time.time() - self.user_detect.last_detected.value) > 20 # seconds
+        # Macro for pausing user detection
+        # TODO: Does this work lol
+        self.user_detection_enabled = self.user_detect.args[2].enabled
+
+        # Helpful lambdas for getting process outputs
+        self.hotspots_detected    = lambda: self.purethermal.launcher.hotspot_detected.value
+        self.max_temp             = lambda: self.purethermal.launcher.max_temp
+        self.cooking_coords       = lambda: self.cooking_detect.launcher.cooking_coords
+        self.unattended_time      = lambda: (time.time() - self.user_detect.launcher.last_detected.value)
 
         # Add an attribute to indicate when a worker should be on
         self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE
-        self.purethermal.on_condition    = lambda: self.current_state != STATE_RESET or self.livestream_active
-        self.user_detect.on_condition    = lambda: self.current_state == STATE_ACTIVE
+        self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or self.livestream_active()
+        self.user_detect.on_condition    = lambda: self.current_state != STATE_SETUP
         self.cooking_detect.on_condition = lambda: self.current_state == STATE_ACTIVE
+        self.livestream.on_condition     = lambda: self.livestream_active()
 
 
-    def __set_state(self, next_state):
+    def _set_state(self, next_state):
         """
-        Set the current state. Start/stop necessary launchers.\n
+        Set the current state. Start/stop necessary launchers
+
         Parameters:
         - next_state (int): State index (StateMachine.STATE_x)
         """
@@ -96,24 +124,85 @@ class StateMachine:
         if next_state == self.current_state: return # No change
         else: self.logger.info(f"State Change: {self.current_state} --> {next_state})")
 
-        # Set state
+        # Setup state (Device not configured)
+        if self.current_state == STATE_SETUP:
+            # Start lepton and load user detection model
+            if next_state == STATE_IDLE:
+                if not self.purethermal.running: 
+                    self.purethermal.start()
+
+                # Start user detection but disable it
+                self.user_detection_enabled = False
+                self.user_detect.start()
+
+            # Unrecognized transition
+            else: self.logger.error("Unrecognized state transition")
+
+        # Idle state (Device configured, No hotspots detected)
+        elif self.current_state == STATE_IDLE:
+            # Shut down lepton and user detection model
+            if next_state == STATE_SETUP:
+                self.purethermal.stop()
+                self.user_detect.stop()
+
+            # Start arducam, enable user detection, start cooking detection
+            elif next_state == STATE_ACTIVE:
+                self.arducam.start()
+                self.user_detection_enabled = True
+                self.cooking_detect.start()
+
+            # Unrecognized transition
+            else: self.logger.error("Unrecognized state transition")
+
+        # Active state (Device configured, Hotspots detected)
+        elif self.current_state == STATE_ACTIVE:
+            # Shut down lepton, cooking detection, arducam, user detection
+            if next_state == STATE_SETUP:
+                self.cooking_detect.stop()
+                self.user_detect.stop()
+                self.purethermal.stop()
+                self.arducam.stop()
+
+            # Leave everything running
+            elif next_state == STATE_ALARM:
+                print("Alarm triggered")
+                pass
+
+            # Disable user detection, shut down arducam and cooking detection
+            elif next_state == STATE_IDLE:
+                self.cooking_detect.stop()
+                self.user_detection_enabled = False
+                self.arducam.stop()
+
+            # Unrecognized transition
+            else: self.logger.error("Unrecognized state transition")
+            
+        # Alarm state (Device configured, Alarm active)
+        elif self.current_state == STATE_ALARM:
+            # Shut down lepton, cooking detection, arducam, user detection
+            if next_state == STATE_SETUP:
+                self.cooking_detect.stop()
+                self.user_detect.stop()
+                self.purethermal.stop()
+                self.arducam.stop()
+
+            # Disable user detection, shut down arducam and cooking detection
+            elif next_state == STATE_IDLE:
+                self.cooking_detect.stop()
+                self.user_detection_enabled = False
+                self.arducam.stop()
+
+            # Unrecognized transition
+            else: self.logger.error("Unrecognized state transition")
+
+        # Set current state
         self.current_state = next_state
 
-        # Start/stop workers
-        for worker in self.workers:
-            # Start worker
-            if worker.on_condition():
-                if not worker.running(): 
-                    worker.start(*worker.args)
 
-            # Stop worker
-            elif worker.running():
-                worker.stop()
-        
-
-    def __check_workers(self):
+    def _check_workers(self):
         """
-        Check if workers encountered any errors. Restart them if possible\n
+        Check if workers encountered any errors. Restart them if possible
+
         Returns (bool): False for critical error, no recovery possible.
         """
 
@@ -121,8 +210,9 @@ class StateMachine:
             # Worker active when it should not be
             if worker.running() and not worker.on_condition():
                 self.logger.warning(f"{worker.name} was running in {self.current_state} state. Shuting down")
-                worker.stop()
-                if not self.purethermal.handle_exceptions(): return False
+                
+                if not worker.stop(check_exceptions=True):
+                    return False
 
             # Worker not active when it should be
             elif not worker.running() and worker.on_condition():
@@ -130,7 +220,7 @@ class StateMachine:
 
                 # Attempt restart
                 if worker.handle_exceptions():
-                    worker.start(*worker.args)
+                    worker.start()
                 else: return False
 
         return True
@@ -138,66 +228,84 @@ class StateMachine:
 
     def update(self):
         """
-        Update the system state\n
+        Update the system state
+
         Returns (bool): False if a fatal error occurred
         """
-        # Startup (No state, No running workers)
-        if self.current_state == STATE_RESET:
-            # TODO: check for wifi
-            # Transition to setup state if not set up
-            if False:
-                self.__set_state(STATE_SETUP)
 
-            # Start lepton polling process if system has been configured
-            else:
-                self.__set_state(STATE_IDLE)
+        # === Report Status to Node.js ===
+        # TODO: set reporting rate in module
+        self.node_server.send_status(
+            cooking_coords = self.cooking_coords(),
+            max_temp = self.max_temp(),
+            unattended_time=self.unattended_time()
+        )
+
+        # === Handle Livestream ===
+        # Check if user has requested the livestream
+        prev = self.livestream_active
+        self.livestream_active = self.node_server.livestream_on
+
+        # Start livestream
+        if self.livestream_active and not prev:
+            if self.current_state == STATE_SETUP:
+                self.purethermal.start()
+            self.livestream.start()
+
+        # Stop livestream
+        elif not self.livestream_active and prev:
+            if not self.livestream.stop(check_exceptions=True):
+                return False
+            
+            if self.current_state == STATE_SETUP:
+                if not self.purethermal.stop(check_exceptions=True):
+                    return False
         
-        # Setup state
-        elif self.current_state == STATE_SETUP:
-            # Start polling purethermal
-            # Wait for user to request livestream and start/stop transcoder
-            # After setup is complete, go to idle
-            self.__set_state(STATE_IDLE)
+        # === Handle State Transitions ===
+        # Setup state (Device not configured)
+        if self.current_state == STATE_SETUP:
+            # Wait for the node.js server to tell us that the device has been configured
+            if self.node_server.configured:
+                self._set_state(STATE_IDLE)
 
-        # Idle state (no hotspots detected)
+        # Idle state (Device configured, No hotspots detected)
         elif self.current_state == STATE_IDLE:
-            # TODO: report max temperature to node.js
+            # System needs to be reconfigured --> setup state
+            if not self.node_server.configured:
+                self._set_state(STATE_SETUP)
 
             # Hotspot detected --> system active
-            if self.hotspots_detected():
-                self.__set_state(STATE_ACTIVE)
-        
-        # Active state (Hotspots detected, cooking/user detection active)
+            elif self.hotspots_detected():
+                self._set_state(STATE_ACTIVE)
+
+        # Active state (Device configured, Hotspots detected)
         elif self.current_state == STATE_ACTIVE:
+            # System needs to be reconfigured --> setup state
+            if not self.node_server.configured:
+                self._set_state(STATE_SETUP)
+
+            # Alarm activated --> enter alarm state
+            elif self.node_server.alarm_on:
+                self._set_state(STATE_ALARM)
+
             # No hotspots detected --> back to idle
-            if not self.hotspots_detected():
-                self.__set_state(STATE_IDLE)
+            elif not self.hotspots_detected():
+                self._set_state(STATE_IDLE)
 
-            # Check if there are any valid blobs (may or may not be cooking)
-            # We will only enable the user detection algorithm when a valid blob exists
-            self.user_detect.args[2].enabled = self.valid_blobs_detected()
+        # Alarm state (Device configured, Alarm active)
+        elif self.current_state == STATE_ALARM:
+            # System needs to be reconfigured --> setup state
+            if not self.node_server.configured:
+                self._set_state(STATE_SETUP)
 
-            # TODO: Report to node.js. Receive alarm state
+            # Alarm turned off, go back to idle
+            elif not self.node_server.alarm_on:
+                self._set_state(STATE_IDLE)
 
-            # ************************************************************
-            # Alarm logic (will be handled by node server later)
-            # Simple timer for now
-            if not self.alarm_active:
-                if self.cooking_detected() and self.unattended():
-                    self.alarm_active = True
-                    self.logger.info("\n\n ****************** ALARM TRIGGERED ******************\n")
-                    winsound.PlaySound("SystemExit", winsound.SND_ALIAS)
-            # ************************************************************
-            
-            # User returned --> Clear alarm and return to idle
-            elif not self.unattended():
-                self.alarm_active = False
-                self.logger.info("Alarm cleared")
-                # self.__set_state(STATE_IDLE)
-        
-        else:
-            self.logger.warning(f"Unrecognized current state: {self.current_state}")
+        # Just in case the state gets screwed up
+        else: 
+            self.logger.error(f"Unrecognized state: {self.current_state}")
             return False
 
         # Check running workers
-        return self.__check_workers()
+        return self._check_workers()

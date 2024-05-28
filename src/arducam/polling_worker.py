@@ -1,6 +1,6 @@
 """Worker process for polling Arducam"""
 
-from misc.logs import configure_subprocess
+from misc.logs import configure_subprocess_log
 from constants import *
 import numpy as np
 import subprocess
@@ -24,7 +24,7 @@ def polling_worker(mem, new, stop, log, errs):
     # === Setup ===
     try:
         # Configure subprocess logs
-        configure_subprocess(log)
+        configure_subprocess_log(log)
 
         # Create logger
         logger = logging.getLogger(__name__)

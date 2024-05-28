@@ -2,8 +2,8 @@
 
 from .polling_worker import polling_worker
 from ctypes import c_bool, c_double
+from misc.launcher import Launcher
 from multiprocessing import Value
-from misc import Launcher
 import logging
 
 

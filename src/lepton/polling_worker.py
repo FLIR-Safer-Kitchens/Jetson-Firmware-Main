@@ -1,10 +1,10 @@
 """Worker process for polling PureThermal"""
 
 from constants import HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME
+from misc.logs import configure_subprocess_log
 from lepton.utils import raw2temp, clip_norm
 from .uvc_windows import PureThermalWindows
 from misc.hysteresis import HysteresisBool
-from misc.logs import configure_subprocess
 from .uvc_stream import PureThermalUVC
 from misc.monitor import MonitorServer
 from constants import *
@@ -29,7 +29,7 @@ def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
     # === Setup ===
     try:
         # Configure subprocess logs
-        configure_subprocess(log)
+        configure_subprocess_log(log)
 
         # Create logger 
         logger = logging.getLogger(__name__)
