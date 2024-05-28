@@ -84,8 +84,9 @@ USER_MIN_CONFIDENCE = 0.6 # Confidence threshold for user detection [0,1]
 USER_MOVEMENT_DIST_THRESH = 20 # Pixel distance that a bounding box must move to be considered movement
 USER_MOVEMENT_TIME_THRESH = 15*60 # Maximum time in seconds that a person can stay stationary before being considered invalid
 
-# Local port that the node.js server uses
-NODE_SERVER_PORT = 3000 
+# Node.js server constants
+NODE_SERVER_PORT = 3000 # Local port that the node.js server uses
+STATUS_REPORT_PERIOD = 2 # The time in seconds between status messages sent to server
 
 # Live streaming constants
 UDP_PORT = 12345
