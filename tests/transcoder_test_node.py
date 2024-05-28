@@ -17,7 +17,7 @@ from streaming import Transcoder
 # from stubs import Transcoder
 
 from misc.node_server import NodeServer
-# from stubs import NodeServer
+# from stubs.node_server_basic import NodeServer
 
 
 def main():

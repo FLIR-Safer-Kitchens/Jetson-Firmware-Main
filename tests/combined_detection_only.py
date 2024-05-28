@@ -23,7 +23,8 @@ import cv2
 from stubs import AlarmBoard
 
 # from misc.node_server import NodeServer
-from stubs import NodeServer
+# from stubs.node_server_basic import NodeServer
+from stubs.node_server_full import NodeServer
 
 # from arducam import Arducam
 from stubs import Arducam

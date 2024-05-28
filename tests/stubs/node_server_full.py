@@ -1,4 +1,8 @@
-"""Note: Run this .py file before attempting to use the stub"""
+"""
+Note: Run this .py file before attempting to use the stub
+
+Full emulates config and alarm triggering logic
+"""
 
 # Add parent directory to the Python path
 import os.path as path
@@ -81,6 +85,12 @@ class NodeServer:
             status["thermalStreamPath"] = m3u8_path
         self.logger.debug(str(status))
 
+        # Alarm triggering emulation
+        if not self.alarm_on and len(cooking_coords) > 0 and unattended_time > 30:
+            self.handle_message({"alarmOn": True})
+        elif self.alarm_on and unattended_time < 5:
+            self.handle_message({"alarmOn": False})
+
 
     def handle_message(self, data):
         """
@@ -110,6 +120,12 @@ class NodeServer:
         except ConnectionRefusedError:
             self.logger.error("Could not connect to command console, have you started it?")
             return
+        
+        # Configuration emulation
+        self.logger.info("System started, configuring...")
+        time.sleep(10)
+        self.logger.info("System configured")
+        self.handle_message({"setupComplete": True})
 
         # Read commands
         while not self._stop.is_set():
@@ -136,10 +152,8 @@ if __name__ == "__main__":
 
     # Command menu
     menu  = "\nCommand menu:\n"
-    menu += "[1] setupComplete\n"
-    menu += "[2] liveStreamOn\n"
-    menu += "[3] alarmOn\n"
-    menu += "[4] <Quit>\n"
+    menu += "[1] liveStreamOn\n"
+    menu += "[2] <Quit>\n"
     menu += "Input: "
 
     while True:
@@ -148,17 +162,15 @@ if __name__ == "__main__":
 
         try: 
             x=int(x)
-            assert x >= 1 and x <= 4
+            assert x >= 1 and x <= 2
         except:
             print("Invalid input")
             continue
         
         # Change variables
-        if x == 1 or x==2 or x==3:
+        if x == 1:
             y = input("Value: ")
-
-            param = [None, "setupComplete", "liveStreamOn", "alarmOn"]
-            payload = {param[x] : eval(y)}
+            payload = {"liveStreamOn" : eval(y)}
             conn.sendall(str(payload).encode())
 
         # Quit
