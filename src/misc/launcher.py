@@ -132,8 +132,7 @@ class Launcher:
 
             # Forcefully kill process
             if self.running():
-                self.logger.error("Worker did not terminate. Killing...")
-                self.worker_proc.kill()
+                self.logger.error("Worker did not terminate")
 
 
 class ExceptionQueue(multiprocessing.queues.Queue):

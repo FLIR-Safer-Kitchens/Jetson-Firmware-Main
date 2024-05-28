@@ -94,7 +94,9 @@ def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
     # === Terminate ===
     try:
         monitor.stop()
-        cooking_coords[:] = []
+        
+        try: cooking_coords[:] = []
+        except BrokenPipeError: pass
 
     # Add errors to queue
     except BaseException as err:
