@@ -14,8 +14,8 @@ import numpy as np
 import logging
 import cv2
 
-# from user_detection import UserDetect
-from stubs import UserDetect
+from user_detection import UserDetect
+# from stubs import UserDetect
 
 
 def main():

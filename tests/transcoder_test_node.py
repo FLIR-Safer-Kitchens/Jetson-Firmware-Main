@@ -13,8 +13,8 @@ import numpy as np
 import logging
 import cv2
 
-# from streaming import Transcoder
-from stubs import Transcoder
+from streaming import Transcoder
+# from stubs import Transcoder
 
 from misc.node_server import NodeServer
 # from stubs import NodeServer
