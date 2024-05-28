@@ -90,8 +90,11 @@ STATUS_REPORT_PERIOD = 2 # The time in seconds between status messages sent to s
 
 # Live streaming constants
 FFMPEG_UDP_PORT = 12345
-HLS_DIRECTORY = "C:/Users/sdhla/Documents/GitHub/Capstone/Jetson-Firmware-Main/src/streaming/hls/" # Directory where stream segments and .m3u8 will be stored. Absolute path preferred
-HLS_FILENAME = "thermal.m3u8"
+HLS_DIRECTORY = "hls/" # Directory where stream segments and .m3u8 will be stored. Relative to src/streaming
+HLS_M3U8_FILENAME = "thermal.m3u8"
+HLS_KEYINFO_FILENAME = "enc.keyinfo"
+HLS_KEY_FILENAME = "enc.key"
+HLS_KEY_URI = "keys/enc.key"
 
 # Alarm board constants
 AVR_BAUD_RATE = 9600 # Baud rate for serial communication

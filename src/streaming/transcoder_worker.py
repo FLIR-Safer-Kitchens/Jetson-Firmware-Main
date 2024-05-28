@@ -6,6 +6,7 @@ import subprocess as sp
 from constants import *
 import numpy as np
 import logging
+import secrets
 import socket
 import cv2
 import os
@@ -115,6 +116,16 @@ def start_transcoder():
     """Start the process to convert from UDP to HLS"""
     udp_stream_url =f'udp://127.0.0.1:{FFMPEG_UDP_PORT}'
 
+    module_dir       = os.path.dirname(__file__)
+    hls_dir          = os.path.join(module_dir, HLS_DIRECTORY)
+    hls_seg_name     = os.path.join(hls_dir,    'segment%d.ts')
+    hls_m3u8_name    = os.path.join(hls_dir,    HLS_M3U8_FILENAME)
+    hls_keyinfo_name = os.path.join(hls_dir,    HLS_KEYINFO_FILENAME)
+    hls_key_name     = os.path.join(hls_dir,    HLS_KEY_FILENAME)
+
+    # Generate key and keyinfo file
+    gen_keyinfo(hls_key_name, hls_keyinfo_name)
+
     # ffmpeg command
     command = [
         'ffmpeg',
@@ -128,12 +139,27 @@ def start_transcoder():
         '-hls_time',             '2',                           # Segment duration (in seconds)
         '-hls_list_size',        '5',                           # Maximum number of playlist entries
         '-hls_flags',            'delete_segments+append_list', # HLS flags
-        '-hls_segment_filename', 
-        os.path.join(HLS_DIRECTORY, 'segment%d.ts'), # Segment filename pattern
-        os.path.join(HLS_DIRECTORY, HLS_FILENAME)    # Output URL for HLS stream
+        '-hls_key_info_file',     hls_keyinfo_name,             # HLS key info filepath
+        '-hls_segment_filename',  hls_seg_name,                 # Segment filename pattern
+        hls_m3u8_name                                           # Output URL for HLS stream
     ]
 
     # Launch the subprocess with output redirection
     log_file_path = os.path.join(os.path.dirname(__file__), 'ffmpeg.log')
     with open(log_file_path, "w") as log_file:
         return sp.Popen(command, stdout=log_file, stderr=log_file)
+
+
+def gen_keyinfo(key_file, keyinfo_file):
+    # Generate key file
+    with open(key_file, 'w') as f:
+        key = secrets.token_bytes(16)
+        f.write(f"{key.hex()}\n")
+
+    # Generate keyinfo file
+    with open(keyinfo_file, 'w') as f:
+        f.write(f"{HLS_KEY_URI}\n")
+        f.write(f"{key_file}\n")
+
+        iv = secrets.token_bytes(16)
+        f.write(f"{iv.hex()}\n")
