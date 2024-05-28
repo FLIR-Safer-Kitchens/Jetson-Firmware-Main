@@ -89,7 +89,7 @@ NODE_SERVER_PORT = 3000 # Local port that the node.js server uses
 STATUS_REPORT_PERIOD = 2 # The time in seconds between status messages sent to server
 
 # Live streaming constants
-UDP_PORT = 12345
+FFMPEG_UDP_PORT = 12345
 HLS_DIRECTORY = "C:/Users/sdhla/Documents/GitHub/Capstone/Jetson-Firmware-Main/src/streaming/hls/" # Directory where stream segments and .m3u8 will be stored. Absolute path preferred
 HLS_FILENAME = "thermal.m3u8"
 

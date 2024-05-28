@@ -83,7 +83,7 @@ def transcoder_worker(mem, new, stop, log, errs):
                 continue
 
             # Transmit frame via UDP socket
-            sock.sendto(frame_bytes, ('127.0.0.1', UDP_PORT))
+            sock.sendto(frame_bytes, ('127.0.0.1', FFMPEG_UDP_PORT))
 
         # Add errors to queue
         except BaseException as err:
@@ -113,13 +113,14 @@ def transcoder_worker(mem, new, stop, log, errs):
 
 def start_transcoder():
     """Start the process to convert from UDP to HLS"""
+    udp_stream_url =f'udp://127.0.0.1:{FFMPEG_UDP_PORT}'
 
     # ffmpeg command
     command = [
         'ffmpeg',
         '-f',                    'mjpeg',                       # Input format
         '-an',                                                  # No audio
-        '-i',                   f'udp://127.0.0.1:{UDP_PORT}',  # Input source (e.g., UDP stream)
+        '-i',                    udp_stream_url,                # Input source (e.g., UDP stream)
         '-c:v',                  'libx264',                     # Video codec
         '-preset',               'ultrafast',                   # Preset for faster encoding
         '-f',                    'hls',                         # Output format HLS
