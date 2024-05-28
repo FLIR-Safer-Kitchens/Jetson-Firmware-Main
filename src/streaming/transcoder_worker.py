@@ -104,6 +104,9 @@ def transcoder_worker(mem, new, stop, log, errs):
             logger.warning("ffmpeg process would not terminate gracefully. Killing...")
             transcode_proc.kill()
 
+        # Delete all of the files in the HLS directory
+        clear_hls_dir()
+
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
@@ -164,3 +167,18 @@ def gen_keyinfo(key_file, keyinfo_file):
 
         iv = secrets.token_bytes(16)
         f.write(f"{iv.hex()}\n")
+
+
+def clear_hls_dir():
+    # Get hls directory
+    module_dir       = os.path.dirname(__file__)
+    hls_dir          = os.path.join(module_dir, HLS_DIRECTORY)
+    
+    # Get a list of all files in the directory
+    files = os.listdir(hls_dir)
+
+    # Iterate over each file and delete it
+    for file in files:
+        file_path = os.path.join(hls_dir, file)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
