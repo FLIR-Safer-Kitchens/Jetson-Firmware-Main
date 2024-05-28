@@ -62,7 +62,7 @@ class NodeServer:
             self._thread = None
 
 
-    def send_status(self, cooking_coords, max_temp, unattended_time):
+    def send_status(self, cooking_coords, max_temp, unattended_time, m3u8_path=None):
         """
         Send a status packet to the node.js server
 
@@ -81,6 +81,9 @@ class NodeServer:
             'maxTemp'      : max_temp, 
             'userLastSeen' : unattended_time
         }
+        if m3u8_path:
+            status["thermalStreamPath"] = m3u8_path
+
         self.logger.debug(str(status))
         self._sock.emit('status', status)
 
