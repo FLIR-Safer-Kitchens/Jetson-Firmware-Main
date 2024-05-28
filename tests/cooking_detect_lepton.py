@@ -5,17 +5,21 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-from cooking_detection import CookingDetect
 from multiprocessing import Array, Queue
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
-from lepton.polling import PureThermal
 from misc import NewFrameEvent
 from ctypes import c_uint16
 from misc.logs import *
 import numpy as np
 import logging
 import cv2
+
+from lepton.polling import PureThermal
+# from stubs import PureThermal
+
+from cooking_detection import CookingDetect
+# from stubs import CookingDetect
 
 
 def main():

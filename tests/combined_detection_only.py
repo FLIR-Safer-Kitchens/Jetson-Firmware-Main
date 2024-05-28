@@ -1,4 +1,4 @@
-"""Combined test of user and cooking detection (without node.js, no livestreaming, no HW alarm)"""
+"""Combined test of user and cooking detection"""
 
 # Add parent directory to the Python path
 import os, sys
@@ -6,14 +6,10 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__
 
 # Muliprocessing stuff
 from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
-from cooking_detection import CookingDetect
+from state_machine import StateMachine, WorkerProcess
 from multiprocessing import Array, Queue
-from lepton.polling import PureThermal
-from state_machine import StateMachine
-from user_detection import UserDetect
 from ctypes import c_uint8, c_uint16
 from misc import NewFrameEvent
-from arducam import Arducam
 import numpy as np
 
 # Debugging stuff
@@ -21,6 +17,29 @@ from misc.monitor import MonitorClient
 from misc.logs import *
 import logging
 import cv2
+
+# Switch between stubs and real modules
+from misc.alarm import AlarmBoard
+# from stubs import AlarmBoard
+
+from misc.node_server import NodeServer
+# from stubs import NodeServer
+
+from arducam import Arducam
+# from stubs import Arducam
+
+from lepton.polling import PureThermal
+# from stubs import PureThermal
+
+from user_detection import UserDetect
+# from stubs import UserDetect
+
+from cooking_detection import CookingDetect
+# from stubs import CookingDetect
+
+from streaming import Transcoder
+# from stubs import Transcoder
+
 
 
 def main():
@@ -34,11 +53,11 @@ def main():
     # Create queue for workers to log to
     logging_queue = Queue(10)
 
-    # Create image arrays in shared memory
+    # Create visible image array in shared memory
     vis_bytes = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8').nbytes
     vis_mem = Array(c_uint8, vis_bytes, lock=True)
     
-    # Create image array in shared memory
+    # Create thermal image array in shared memory
     raw16_bytes = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16').nbytes
     raw16_mem = Array(c_uint16, raw16_bytes, lock=True)
 
@@ -47,43 +66,70 @@ def main():
     raw16_frame_parent = NewFrameEvent()
 
     # Get a different child event for each process that reads frame data
-    vis_frame_child   = vis_frame_parent.get_child()
-    raw16_frame_child = raw16_frame_parent.get_child()
+    user_det_frame_event    = vis_frame_parent.get_child()
+    cooking_det_frame_event = raw16_frame_parent.get_child()
+    livestream_frame_event  = raw16_frame_parent.get_child()
+
+    # Instantiate alarm board
+    alarm = AlarmBoard()
+
+    # Instantiate node.js server
+    node = NodeServer()
 
     # Instantiate launchers
     arducam_proc        = Arducam()
     purethermal_proc    = PureThermal()
     user_detect_proc    = UserDetect()
     cooking_detect_proc = CookingDetect()
+    livestream_proc     = Transcoder()
 
     # Pass launchers and their arguments to the main state machine
     state_machine = StateMachine(
-        arducam=arducam_proc,
-        arducam_args=(
-            vis_mem,
-            vis_frame_parent,
-            logging_queue
+        node_server=node,
+        arducam=WorkerProcess(
+            name="Arducam",
+            launcher=arducam_proc,
+            start_args=(
+                vis_mem,
+                vis_frame_parent,
+                logging_queue
+            )
         ),
-
-        purethermal=purethermal_proc,
-        purethermal_args=(
-            raw16_mem,
-            raw16_frame_parent,
-            logging_queue
+        purethermal=WorkerProcess(
+            name="PureThermal",
+            launcher=purethermal_proc,
+            start_args=(
+                raw16_mem,
+                raw16_frame_parent,
+                logging_queue
+            )
         ),
-
-        user_detect=user_detect_proc,
-        user_detect_args=(
-            vis_mem,
-            vis_frame_child,
-            logging_queue
+        user_detect=WorkerProcess(
+            name="User Detection",
+            launcher=user_detect_proc,
+            start_args=(
+                vis_mem,
+                user_det_frame_event,
+                logging_queue
+            )
         ),
-
-        cooking_detect=cooking_detect_proc,
-        cooking_detect_args=(
-            raw16_mem,
-            raw16_frame_child,
-            logging_queue
+        cooking_detect=WorkerProcess(
+            name="Cooking Detection",
+            launcher=cooking_detect_proc,
+            start_args=(
+                raw16_mem,
+                cooking_det_frame_event,
+                logging_queue
+            )
+        ),
+        livestream=WorkerProcess(
+            name="Thermal Livestream",
+            launcher=livestream_proc,
+            start_args=(
+                raw16_mem,
+                livestream_frame_event,
+                logging_queue
+            )
         )
     )
 
@@ -98,6 +144,12 @@ def main():
         # Start thread to emit worker log messages
         logging_thread = QueueListener(logging_queue)
         logging_thread.start()
+
+        # Establish alarm board connection
+        alarm.connect()
+
+        # Establish node.js server connection
+        node.connect()
 
         # Initialize the state machine
         running = state_machine.update()
@@ -135,6 +187,10 @@ def main():
         purethermal_proc.stop()
         user_detect_proc.stop()
         cooking_detect_proc.stop()
+        livestream_proc.stop()
+
+        # Shut down node server connection
+        node.disconnect()
 
         # Shut down monitor windows
         user_monitor.stop()
@@ -144,7 +200,6 @@ def main():
         # Shut down loggers
         logging_thread.stop()
         logger.info("test ended")
-
 
 
 # Start main program

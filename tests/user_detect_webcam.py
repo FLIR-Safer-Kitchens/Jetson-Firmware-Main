@@ -6,7 +6,6 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__
 
 from multiprocessing import Array, Queue
 from misc.monitor import MonitorClient
-from user_detection import UserDetect
 from constants import VISIBLE_SHAPE
 from misc import NewFrameEvent
 from ctypes import c_uint8
@@ -14,6 +13,9 @@ from misc.logs import *
 import numpy as np
 import logging
 import cv2
+
+# from user_detection import UserDetect
+from stubs import UserDetect
 
 
 def main():

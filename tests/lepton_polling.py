@@ -9,7 +9,6 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 from multiprocessing import Array, Queue
 from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
-from lepton.polling import PureThermal
 from lepton.utils import clip_norm
 from misc import NewFrameEvent
 from ctypes import c_uint16
@@ -17,6 +16,9 @@ from misc.logs import *
 import numpy as np
 import logging
 import cv2
+
+from lepton.polling import PureThermal
+# from stubs import PureThermal
 
 
 def main():
