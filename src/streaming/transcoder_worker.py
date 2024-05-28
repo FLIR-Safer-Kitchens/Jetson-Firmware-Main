@@ -94,15 +94,15 @@ def transcoder_worker(mem, new, stop, log, errs):
 
     # === Terminate ===
     try:
+        # Shut down UDP socket
+        sock.close()
+
         # Shut down ffmpeg transcoder
         transcode_proc.terminate()
         try: transcode_proc.wait(100e-3)
         except sp.TimeoutExpired:
             logger.warning("ffmpeg process would not terminate gracefully. Killing...")
             transcode_proc.kill()
-    
-        # Shut down UDP socket
-        sock.close()
 
     # Add errors to queue
     except BaseException as err:
@@ -132,14 +132,15 @@ def start_transcoder():
         '-f',                    'mjpeg',                       # Input format
         '-an',                                                  # No audio
         '-i',                    udp_stream_url,                # Input source (e.g., UDP stream)
+        '-r',                    '24',                          # Frame rate
         '-c:v',                  'libx264',                     # Video codec
         '-preset',               'ultrafast',                   # Preset for faster encoding
+        '-force_key_frames',     'expr:gte(t,n_forced*1)',      # Force keyframes every 1 seconds
         '-f',                    'hls',                         # Output format HLS
-        '-g',                    '60',                          # Number of frames between 2 keyframes (2s @ 30fps = 60)
         '-hls_time',             '2',                           # Segment duration (in seconds)
-        '-hls_list_size',        '5',                           # Maximum number of playlist entries
-        '-hls_flags',            'delete_segments+append_list', # HLS flags
-        '-hls_key_info_file',     hls_keyinfo_name,             # HLS key info filepath
+        '-hls_list_size',        '10',                           # Maximum number of playlist entries
+        '-hls_flags',            'delete_segments+append_list+split_by_time', # HLS flags
+        # '-hls_key_info_file',     hls_keyinfo_name,            # HLS key info filepath
         '-hls_segment_filename',  hls_seg_name,                 # Segment filename pattern
         hls_m3u8_name                                           # Output URL for HLS stream
     ]
