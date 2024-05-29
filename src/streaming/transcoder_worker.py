@@ -1,6 +1,7 @@
 """Handles transcoding from raw thermal video to colorized HLS stream"""
 
 from misc.logs import configure_subprocess_log
+# from misc.monitor import MonitorServer
 from lepton.utils import clip_norm
 import subprocess as sp
 from constants import *
@@ -44,6 +45,9 @@ def transcoder_worker(mem, new, stop, log, errs):
 
         # Create a UDP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        # Create monitor
+        # monitor = MonitorServer(13023)
         
         # Start converting UDP to HLS
         logger.debug("Starting FFMPEG subprocess")
@@ -74,8 +78,11 @@ def transcoder_worker(mem, new, stop, log, errs):
             mem.get_lock().release()
 
             # Normalize & colorize frame
-            frame = clip_norm(frame)
-            color_frame = cv2.applyColorMap(frame, cv2.COLORMAP_INFERNO)
+            clipped_frame = clip_norm(frame)
+            color_frame = cv2.applyColorMap(clipped_frame, cv2.COLORMAP_INFERNO)
+
+            # Send frame to monitor
+            # monitor.show(color_frame)
 
             # Convert frame to bytes
             frame_bytes = cv2.imencode('.jpg', color_frame, [cv2.IMWRITE_JPEG_QUALITY, 100])[1].tobytes()
@@ -96,6 +103,9 @@ def transcoder_worker(mem, new, stop, log, errs):
     try:
         # Shut down UDP socket
         sock.close()
+
+        # Close monitor
+        # monitor.stop()
 
         # Shut down ffmpeg transcoder
         transcode_proc.terminate()
