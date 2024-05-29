@@ -70,7 +70,7 @@ def configure_main_log(to_file=True, to_term=True):
 
     # Create file handler
     if to_file:
-        fh = logging.FileHandler("output.log")
+        fh = logging.FileHandler(f"output_{round(time.time())}.log")
         fh.setLevel(logging.DEBUG)
         ff = logging.Formatter("%(asctime)s --> %(name)s (%(levelname)s):\n%(message)s\n")
         fh.setFormatter(ff)
