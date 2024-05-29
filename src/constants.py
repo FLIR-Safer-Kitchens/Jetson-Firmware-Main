@@ -99,5 +99,5 @@ HLS_KEY_URI = "keys/enc.key"
 # Alarm board constants
 AVR_BAUD_RATE = 9600 # Baud rate for serial communication
 AVR_USB_VID = 9025 # USB vendor ID for MCU
-AVR_USB_PID = 67 # USB product ID for MCU
+AVR_USB_PID = 32822 # USB product ID for MCU
 AVR_TIMEOUT = 2 # Timeout in seconds for incoming and outgoing serial communication

@@ -4,6 +4,7 @@ from serial import Serial, SerialException, SerialTimeoutException
 import serial.tools.list_ports
 from constants import *
 import logging
+import time
 
 
 class AlarmBoard:
@@ -60,14 +61,29 @@ class AlarmBoard:
         # Close any existing connections
         self.disconnect()
 
-        # Find the first device matching the
-        # USB vendor/product ID
-        com_ports = serial.tools.list_ports.comports()
-        for device in com_ports:
-            if (device.vid == AVR_USB_VID) and (device.pid == AVR_USB_PID):
-                port = device.device
-                break
-        else: assert False, "Failed to find microcontroller"
+        RETRIES = 15
+        for retry in range(RETRIES):
+            # Find the first device matching the
+            # USB vendor/product ID
+            com_ports = serial.tools.list_ports.comports()
+            for device in com_ports:
+                if (device.vid == AVR_USB_VID) and (device.pid == AVR_USB_PID):
+                    port = device.device
+                    break
+            
+            # Re-attempt connection
+            else: 
+                self.logger.warning(f"Failed to find microcontroller. Retry: ({retry+1}/{RETRIES})")
+                time.sleep(2)
+                continue
+            
+            # Microcontroller found
+            self.logger.info("Found microcontroller")
+            break
+
+        # Microcontroller could not be found
+        else: assert False, "Microcontroller not found"
+
 
         # Establish the serial connection
         self.ser = Serial(
@@ -91,4 +107,4 @@ class AlarmBoard:
 
     def stopAlarm(self):
         """Deactivate the alarm"""
-        return self.__send_cmd("stop\n")
+        return self.__send_cmd("alarmoff\n")
