@@ -1,5 +1,6 @@
 """State machine for main process"""
 
+from constants import STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE
 from misc.node_server import NodeServer
 from misc.launcher import Launcher
 from misc.alarm import AlarmBoard
@@ -52,21 +53,20 @@ class StateMachine:
             purethermal:    WorkerProcess, 
             user_detect:    WorkerProcess, 
             cooking_detect: WorkerProcess,
-            livestream:     WorkerProcess
+            thermal_stream: WorkerProcess,
+            visible_stream: WorkerProcess
         ):
         """
 
-        TODO: UPDATE
-
         Parameters:
-        - arducam (arducam.Arducam): Arducam polling launcher
-        - arducam_args (tuple): Arguments to pass to the launcher's start() method
-        - purethermal (lepton.polling.PureThermal): Purethermal polling launcher
-        - purethermal_args (tuple): Arguments to pass to the launcher's start() method
-        - user_detect (user_detection.UserDetect): User detection launcher
-        - user_detect_args (tuple): Arguments to pass to the launcher's start() method
-        - cooking_detect (cooking_detection.CookingDetect): Cooking detection launcher
-        - cooking_detect_args (tuple): Arguments to pass to the launcher's start() method
+        - node_server (NodeServer): The node.js server object  
+        - alarm_board (AlarmBoard): The alarm board server object
+        - arducam (WorkerProcess): Arducam polling launcher and args
+        - purethermal (WorkerProcess): Purethermal polling launcher and args
+        - user_detect (WorkerProcess): User detection launcher and args
+        - cooking_detect (WorkerProcess): Cooking detection launcher and args
+        - thermal_stream (WorkerProcess): Transcoder launcher with thermal args
+        - visible_stream (WorkerProcess): Transcoder launcher with visible args
         """
 
         # Get logger
@@ -84,7 +84,8 @@ class StateMachine:
         self.purethermal = purethermal
         self.user_detect = user_detect
         self.cooking_detect = cooking_detect
-        self.livestream = livestream
+        self.thermal_stream = thermal_stream
+        self.visible_stream = visible_stream
 
         # Bundle workers for easier iteration
         self.workers = (
@@ -92,12 +93,14 @@ class StateMachine:
             self.purethermal, 
             self.user_detect, 
             self.cooking_detect, 
-            self.livestream
+            self.thermal_stream,
+            self.visible_stream
         )
 
         # Initialize system state
         self.current_state = STATE_SETUP
         self.livestream_active = False
+        self.livestream_type = ""
 
         # Macro for pausing user detection
         # TODO: Does this work lol
@@ -110,11 +113,12 @@ class StateMachine:
         self.unattended_time      = lambda: (time.time() - self.user_detect.launcher.last_detected.value)
 
         # Add an attribute to indicate when a worker should be on
-        self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM
-        self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or self.livestream_active
+        self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM or (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE)
+        self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL)
         self.user_detect.on_condition    = lambda: self.current_state != STATE_SETUP
         self.cooking_detect.on_condition = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM
-        self.livestream.on_condition     = lambda: self.livestream_active
+        self.thermal_stream.on_condition = lambda: self.livestream_active
+        self.visible_stream.on_condition = lambda: self.livestream_active
 
 
     def _set_state(self, next_state):
@@ -239,12 +243,12 @@ class StateMachine:
         """
 
         # === Report Status to Node.js ===
-        m3u8_path = self.livestream.launcher.m3u8_path if self.livestream_active else None
+        rtsp_url = self.thermal_stream.launcher.rtsp_url if self.livestream_active else None
         self.node_server.send_status(
             cooking_coords = self.cooking_coords(),
             max_temp = self.max_temp(),
             unattended_time=self.unattended_time(),
-            m3u8_path=m3u8_path
+            rtsp_url=rtsp_url
         )
 
         # === Handle Livestream ===
@@ -254,19 +258,40 @@ class StateMachine:
 
         # Start livestream
         if self.livestream_active and not prev:
-            if self.current_state == STATE_SETUP:
-                self.purethermal.start()
-            self.livestream.start()
+            self.livestream_type = self.node_server.livestream_type
+
+            # Thermal
+            if self.livestream_type == STREAM_TYPE_THERMAL:
+                if self.current_state == STATE_SETUP:
+                    self.purethermal.start()
+                self.thermal_stream.start()
+           
+            # Visible
+            elif self.livestream_type == STREAM_TYPE_VISIBLE:
+                if self.current_state not in {STATE_ACTIVE, STATE_ALARM}:
+                    self.arducam.start()
+                self.visible_stream.start()
 
         # Stop livestream
         elif not self.livestream_active and prev:
-            if not self.livestream.stop(check_exceptions=True):
-                return False
-            
-            if self.current_state == STATE_SETUP:
-                if not self.purethermal.stop(check_exceptions=True):
+            # Thermal
+            if self.livestream_type == STREAM_TYPE_THERMAL:
+                if not self.thermal_stream.stop(check_exceptions=True):
                     return False
-        
+            
+                if self.current_state == STATE_SETUP:
+                    if not self.purethermal.stop(check_exceptions=True):
+                        return False
+            
+            # Visible
+            elif self.livestream_type == STREAM_TYPE_VISIBLE:
+                if not self.visible_stream.stop(check_exceptions=True):
+                    return False
+                
+                if self.current_state not in {STATE_ACTIVE, STATE_ALARM}:
+                    if not self.arducam.stop(check_exceptions=True):
+                        return False
+
         # === Handle State Transitions ===
         # Setup state (Device not configured)
         if self.current_state == STATE_SETUP:

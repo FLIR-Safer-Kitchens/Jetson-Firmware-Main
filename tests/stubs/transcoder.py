@@ -6,17 +6,16 @@ import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', "src")))
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', 'tests')))
 
-from constants import HLS_DIRECTORY, HLS_M3U8_FILENAME
+from constants import FFMPEG_RTSP_PORT, FFMPEG_RTSP_URL
 from stubs import Launcher
 import threading
 import logging
 import time
-import os
 
 SOCKET_PORT = 15696
 
 
-def worker(stop, raw16_mem, frame_event, log_queue):
+def worker(stop, stream_type, mem, frame_event, log_queue):
     getting_frames = False
     last_frame = 0
 
@@ -44,28 +43,21 @@ class Transcoder(Launcher):
         self.logger.setLevel(logging.DEBUG)
         self.logger.warning("I'M JUST A STUB")
 
-        # Compute .m3u8 directory to give to node server
-        module_path = os.path.dirname(__file__)
-        self.m3u8_path = os.path.join(module_path, HLS_DIRECTORY, HLS_M3U8_FILENAME)
-        self.m3u8_path = os.path.normpath(self.m3u8_path)
+        # Compute RTSP directory to give to node server
+        self.rtsp_url = f'rtsp://127.0.0.1:{FFMPEG_RTSP_PORT}/{FFMPEG_RTSP_URL}'
 
         # Frame reading worker
         self.stop_sig1 = threading.Event()
         self.thread1 = None
 
 
-    def start(self, raw16_mem, frame_event, log_queue):
+    def start(self, stream_type, mem, frame_event, log_queue):
         """
         Start the transcoder worker
-
-        Parameters:
-        - vis_mem (multiprocessing.Array): Shared memory location of visible camera data
-        - frame_event (NewFrameConsumer): Flag that indicates when a new frame is available
-        - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
         if self.thread1 == None:
             self.stop_sig1.clear()
-            self.thread1 = threading.Thread(target=worker, args=(self.stop_sig1, raw16_mem, frame_event, log_queue), daemon=True)
+            self.thread1 = threading.Thread(target=worker, args=(self.stop_sig1, stream_type, mem, frame_event, log_queue), daemon=True)
             self.thread1.start()
 
         super().start(None, None)

@@ -7,7 +7,6 @@ import subprocess as sp
 from constants import *
 import numpy as np
 import logging
-import secrets
 import socket
 import cv2
 import os
@@ -16,12 +15,13 @@ import os
 BUFF_SIZE = 65507
 
 
-def transcoder_worker(mem, new, stop, log, errs):
+def transcoder_worker(stream_type, mem, new, stop, log, errs):
     """
-    Accept incoming raw thermal frames, stream to ffmpeg using UDP, and output a HLS stream
+    Accept incoming image frames, stream to ffmpeg using UDP, and output a RTSP stream
 
     Parameters:
-    - mem (multiprocessing.Array): Shared memory location of raw16 image data
+    - stream_type (str): The type of stream, either "thermal" or "visible" (check constants.py)
+    - mem (multiprocessing.Array): Shared memory location of the image data
     - new (NewFrameConsumer): Flag that indicates when a new frame is available
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -38,7 +38,13 @@ def transcoder_worker(mem, new, stop, log, errs):
         configure_subprocess_log(log)
 
         # Create numpy array backed by shared memory
-        frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
+        # and choose compression level
+        if stream_type == STREAM_TYPE_THERMAL:
+            frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
+            comp_level = 100
+        elif stream_type == STREAM_TYPE_VISIBLE:
+            frame_src = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.get_obj())
+            comp_level = 80
 
         # Create array for us to copy to
         frame = np.empty_like(frame_src)
@@ -77,17 +83,21 @@ def transcoder_worker(mem, new, stop, log, errs):
             np.copyto(frame, frame_src)
             mem.get_lock().release()
 
-            # Normalize & colorize frame
-            clipped_frame = clip_norm(frame)
-            color_frame = cv2.applyColorMap(clipped_frame, cv2.COLORMAP_INFERNO)
+            # Pre-process frame
+            if stream_type == STREAM_TYPE_THERMAL:
+                clipped_frame = clip_norm(frame)
+                color_frame = cv2.applyColorMap(clipped_frame, cv2.COLORMAP_INFERNO)
+            else:
+                color_frame = frame.copy()
 
             # Send frame to monitor
             # monitor.show(color_frame)
 
             # Convert frame to bytes
-            frame_bytes = cv2.imencode('.jpg', color_frame, [cv2.IMWRITE_JPEG_QUALITY, 100])[1].tobytes()
+            frame_bytes = cv2.imencode('.jpg', color_frame, [cv2.IMWRITE_JPEG_QUALITY, comp_level])[1].tobytes()
             if len(frame_bytes) > BUFF_SIZE:
                 logger.warning(f"Packet too large. ({len(frame_bytes)}>{BUFF_SIZE})")
+                comp_level -= 5
                 continue
 
             # Transmit frame via UDP socket
@@ -114,9 +124,6 @@ def transcoder_worker(mem, new, stop, log, errs):
             logger.warning("ffmpeg process would not terminate gracefully. Killing...")
             transcode_proc.kill()
 
-        # Delete all of the files in the HLS directory
-        clear_hls_dir()
-
     # Add errors to queue
     except BaseException as err:
         errs.put(err, False)
@@ -127,68 +134,25 @@ def transcoder_worker(mem, new, stop, log, errs):
 
 def start_transcoder():
     """Start the process to convert from UDP to HLS"""
-    udp_stream_url =f'udp://127.0.0.1:{FFMPEG_UDP_PORT}'
+    udp_stream_url  = f'udp://127.0.0.1:{FFMPEG_UDP_PORT}'
+    rtsp_stream_url = f'rtsp://127.0.0.1:{FFMPEG_RTSP_PORT}/{FFMPEG_RTSP_URL}'
 
-    module_dir       = os.path.dirname(__file__)
-    hls_dir          = os.path.join(module_dir, HLS_DIRECTORY)
-    hls_seg_name     = os.path.join(hls_dir,    'segment%d.ts')
-    hls_m3u8_name    = os.path.join(hls_dir,    HLS_M3U8_FILENAME)
-    hls_keyinfo_name = os.path.join(hls_dir,    HLS_KEYINFO_FILENAME)
-    hls_key_name     = os.path.join(hls_dir,    HLS_KEY_FILENAME)
-
-    # Generate key and keyinfo file
-    gen_keyinfo(hls_key_name, hls_keyinfo_name)
-
-    # ffmpeg command
     command = [
         'ffmpeg',
-        '-f',                    'mjpeg',                       # Input format
-        '-an',                                                  # No audio
-        '-i',                    udp_stream_url,                # Input source (e.g., UDP stream)
-        '-r',                    '24',                          # Frame rate
-        '-c:v',                  'libx264',                     # Video codec
-        '-preset',               'ultrafast',                   # Preset for faster encoding
-        '-force_key_frames',     'expr:gte(t,n_forced*1)',      # Force keyframes every 1 seconds
-        '-f',                    'hls',                         # Output format HLS
-        '-hls_time',             '2',                           # Segment duration (in seconds)
-        '-hls_list_size',        '10',                           # Maximum number of playlist entries
-        '-hls_flags',            'delete_segments+append_list+split_by_time', # HLS flags
-        # '-hls_key_info_file',     hls_keyinfo_name,            # HLS key info filepath
-        '-hls_segment_filename',  hls_seg_name,                 # Segment filename pattern
-        hls_m3u8_name                                           # Output URL for HLS stream
+        '-f',              'mjpeg',         # Input format
+        '-an',                             # No audio
+        '-i',              udp_stream_url, # Input source (e.g., UDP stream)
+        '-r',              '24',           # Frame rate
+        '-c:v',            'libx264',      # Video codec
+        '-preset',         'ultrafast',    # Preset for faster encoding
+        '-g',              '24',           # Keyframe interval (~1s)
+        '-f',              'rtsp',         # Output format RTSP
+        '-rtsp_transport', 'tcp',          # Transport protocol for RTSP (tcp/udp)
+        '-tune',           'zerolatency',  # Minimize encoding time
+        rtsp_stream_url                    # RTSP output URL
     ]
 
     # Launch the subprocess with output redirection
     log_file_path = os.path.join(os.path.dirname(__file__), 'ffmpeg.log')
     with open(log_file_path, "w") as log_file:
         return sp.Popen(command, stdout=log_file, stderr=log_file)
-
-
-def gen_keyinfo(key_file, keyinfo_file):
-    # Generate key file
-    with open(key_file, 'w') as f:
-        key = secrets.token_bytes(16)
-        f.write(f"{key.hex()}\n")
-
-    # Generate keyinfo file
-    with open(keyinfo_file, 'w') as f:
-        f.write(f"{HLS_KEY_URI}\n")
-        f.write(f"{key_file}\n")
-
-        iv = secrets.token_bytes(16)
-        f.write(f"{iv.hex()}\n")
-
-
-def clear_hls_dir():
-    # Get hls directory
-    module_dir       = os.path.dirname(__file__)
-    hls_dir          = os.path.join(module_dir, HLS_DIRECTORY)
-    
-    # Get a list of all files in the directory
-    files = os.listdir(hls_dir)
-
-    # Iterate over each file and delete it
-    for file in files:
-        file_path = os.path.join(hls_dir, file)
-        if os.path.isfile(file_path):
-            os.remove(file_path)

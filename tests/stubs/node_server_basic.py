@@ -9,7 +9,7 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', "src")))
 
-from constants import STATUS_REPORT_PERIOD
+from constants import STATUS_REPORT_PERIOD, STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE
 import threading
 import logging
 import socket
@@ -27,9 +27,10 @@ class NodeServer:
         self.logger.warning("I'M JUST A STUB")
 
         # Server outputs
-        self.configured    = False
-        self.livestream_on = False
-        self.alarm_on      = False
+        self.configured      = False
+        self.livestream_on   = False
+        self.livestream_type = STREAM_TYPE_THERMAL
+        self.alarm_on        = False
         
         # Start thread to read commands
         self._stop = threading.Event()
@@ -62,7 +63,7 @@ class NodeServer:
         self.logger.info("Disconnected from Node.js Server")
 
 
-    def send_status(self, cooking_coords, max_temp, unattended_time, m3u8_path=None):
+    def send_status(self, cooking_coords, max_temp, unattended_time, rtsp_url=None):
         """
         Send a status packet to the node.js server
 
@@ -81,8 +82,8 @@ class NodeServer:
             'maxTemp'      : max_temp, 
             'userLastSeen' : unattended_time
         }
-        if m3u8_path:
-            status["thermalStreamPath"] = m3u8_path
+        if rtsp_url:
+            status["thermalStreamPath"] = rtsp_url
         self.logger.debug(str(status))
 
 
@@ -100,6 +101,10 @@ class NodeServer:
             self.configured = bool(data["setupComplete"])
         if "liveStreamOn" in data: 
             self.livestream_on = bool(data["liveStreamOn"])
+        if "liveStreamType" in data:
+            stream_type = str(data["liveStreamType"]).strip()
+            if stream_type == "thermal": self.livestream_type = STREAM_TYPE_THERMAL
+            if stream_type == "visible": self.livestream_type = STREAM_TYPE_VISIBLE
         if "alarmOn" in data: 
             self.alarm_on = bool(data["alarmOn"])
 
@@ -142,8 +147,9 @@ if __name__ == "__main__":
     menu  = "\nCommand menu:\n"
     menu += "[1] setupComplete\n"
     menu += "[2] liveStreamOn\n"
-    menu += "[3] alarmOn\n"
-    menu += "[4] <Quit>\n"
+    menu += "[3] liveStreamType\n"
+    menu += "[4] alarmOn\n"
+    menu += "[5] <Quit>\n"
     menu += "Input: "
 
     while True:
@@ -152,16 +158,16 @@ if __name__ == "__main__":
 
         try: 
             x=int(x)
-            assert x >= 1 and x <= 4
+            assert x >= 1 and x <= 5
         except:
             print("Invalid input")
             continue
         
         # Change variables
-        if x == 1 or x==2 or x==3:
+        if x != 5:
             y = input("Value: ")
 
-            param = [None, "setupComplete", "liveStreamOn", "alarmOn"]
+            param = [None, "setupComplete", "liveStreamOn", "liveStreamType", "alarmOn"]
             payload = {param[x] : eval(y)}
             conn.sendall(str(payload).encode())
 

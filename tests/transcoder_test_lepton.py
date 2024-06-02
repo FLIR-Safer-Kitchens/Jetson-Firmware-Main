@@ -5,7 +5,6 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
-from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
 from ctypes import c_uint16
 from constants import *
@@ -70,7 +69,7 @@ def main():
                 ret = tc.handle_exceptions()
                 assert ret, "Transcoder process not recoverable"
                 logger.warning("Attempting to restart transcoder process")
-                tc.start(mem, new_frame_child, logging_queue)
+                tc.start(STREAM_TYPE_THERMAL, mem, new_frame_child, logging_queue)
 
             # Check worker status
             if (pt.running() != running):
@@ -97,7 +96,7 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                tc.start(mem, new_frame_child, logging_queue)
+                tc.start(STREAM_TYPE_THERMAL, mem, new_frame_child, logging_queue)
                 pt.start(mem, new_frame_parent, logging_queue)
             elif k == ord('q'):
                 raise KeyboardInterrupt

@@ -5,7 +5,7 @@ import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 # Muliprocessing stuff
-from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
+from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE, STREAM_TYPE_VISIBLE, STREAM_TYPE_THERMAL
 from state_machine import StateMachine, WorkerProcess
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
@@ -23,8 +23,8 @@ import cv2
 from stubs import AlarmBoard
 
 # from misc.node_server import NodeServer
-# from stubs.node_server_basic import NodeServer
-from stubs.node_server_full import NodeServer
+from stubs.node_server_basic import NodeServer
+# from stubs.node_server_full import NodeServer
 
 # from arducam import Arducam
 from stubs import Arducam
@@ -32,14 +32,14 @@ from stubs import Arducam
 # from lepton.polling import PureThermal
 from stubs import PureThermal
 
-# from user_detection import UserDetect
-from stubs import UserDetect
+from user_detection import UserDetect
+# from stubs import UserDetect
 
-# from cooking_detection import CookingDetect
-from stubs import CookingDetect
+from cooking_detection import CookingDetect
+# from stubs import CookingDetect
 
-# from streaming import Transcoder
-from stubs import Transcoder
+from streaming import Transcoder
+# from stubs import Transcoder
 
 
 
@@ -69,7 +69,8 @@ def main():
     # Get a different child event for each process that reads frame data
     user_det_frame_event    = vis_frame_parent.get_child()
     cooking_det_frame_event = raw16_frame_parent.get_child()
-    livestream_frame_event  = raw16_frame_parent.get_child()
+    thermal_stream_frame_event = raw16_frame_parent.get_child()
+    visible_stream_frame_event = vis_frame_parent.get_child()
 
     # Instantiate alarm board
     alarm = AlarmBoard()
@@ -124,12 +125,23 @@ def main():
                 logging_queue
             )
         ),
-        livestream=WorkerProcess(
+        thermal_stream=WorkerProcess(
             name="Thermal Livestream",
             launcher=livestream_proc,
             start_args=(
+                STREAM_TYPE_THERMAL,
                 raw16_mem,
-                livestream_frame_event,
+                thermal_stream_frame_event,
+                logging_queue
+            )
+        ),
+        visible_stream=WorkerProcess(
+            name="Visible Livestream",
+            launcher=livestream_proc,
+            start_args=(
+                STREAM_TYPE_VISIBLE,
+                vis_mem,
+                visible_stream_frame_event,
                 logging_queue
             )
         )
@@ -141,6 +153,9 @@ def main():
 
     cooking_monitor = MonitorClient(12347)
     cv2.namedWindow("Cooking Detection", cv2.WINDOW_NORMAL)
+
+    lepton_monitor = MonitorClient(12348)
+    cv2.namedWindow("Lepton View", cv2.WINDOW_NORMAL)
 
     try:
         # Start thread to emit worker log messages
@@ -173,6 +188,9 @@ def main():
             ret, monitor_frame = cooking_monitor.read()
             if ret: cv2.imshow("Cooking Detection", monitor_frame)
 
+            ret, monitor_frame = lepton_monitor.read()
+            if ret: cv2.imshow("Lepton View", monitor_frame)
+
             # Delay
             if cv2.waitKey(50) ^ 0xff == ord('q'):
                 raise KeyboardInterrupt
@@ -201,6 +219,7 @@ def main():
         # Shut down monitor windows
         user_monitor.stop()
         cooking_monitor.stop()
+        lepton_monitor.stop()
         cv2.destroyAllWindows()
 
         # Shut down loggers

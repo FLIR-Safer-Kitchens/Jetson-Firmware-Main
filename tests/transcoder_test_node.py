@@ -5,8 +5,7 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
-from constants import RAW_THERMAL_SHAPE
-from ctypes import c_uint16
+from ctypes import c_uint8, c_uint16
 from constants import *
 from misc.logs import *
 import numpy as np
@@ -16,8 +15,9 @@ import cv2
 from streaming import Transcoder
 # from stubs import Transcoder
 
-from misc.node_server import NodeServer
+# from misc.node_server import NodeServer
 # from stubs.node_server_basic import NodeServer
+from stubs.node_server_full import NodeServer
 
 
 def main():
@@ -31,14 +31,19 @@ def main():
     # Create queue for workers to log to
     logging_queue = Queue(40)
 
-    # Create array for us to copy to
-    frame = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16')
-
     # Create image array in shared memory
-    mem = Array(c_uint16, frame.nbytes, lock=True)
+    thermal_byes = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16').nbytes
+    raw16_mem = Array(c_uint16, thermal_byes, lock=True)
 
     # Create numpy array backed by shared memory
-    frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
+    thermal_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=raw16_mem.get_obj())
+
+    # Create image array in shared memory
+    visible_byes = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8').nbytes
+    vis_mem = Array(c_uint8, visible_byes, lock=True)
+
+    # Create numpy array backed by shared memory
+    visible_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=vis_mem.get_obj())
 
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
@@ -63,7 +68,8 @@ def main():
         # Connect to node server
         node.connect()
         
-        running = False
+        running = node.livestream_on
+        stream_type = node.livestream_type
         while True:
             # Check log listener status
             if not logging_thread.running():
@@ -75,26 +81,40 @@ def main():
                 ret = tc.handle_exceptions()
                 assert ret, "Transcoder process not recoverable"
                 logger.warning("Attempting to restart transcoder process")
-                tc.start(mem, new_frame_child, logging_queue)
+                if stream_type == STREAM_TYPE_THERMAL:
+                    tc.start(STREAM_TYPE_THERMAL, raw16_mem, new_frame_child, logging_queue)
+                elif stream_type == STREAM_TYPE_VISIBLE:
+                    tc.start(STREAM_TYPE_VISIBLE, vis_mem, new_frame_child, logging_queue)
 
             # Send status
-            m3u8_path = tc.m3u8_path if running else None
-            node.send_status([], 69.0, 300, m3u8_path)
-            
+            rtsp_url = tc.rtsp_url if running else None
+            node.send_status([], 69.0, 300, rtsp_url)
+
             if running:
                 # Grab frame
                 ret, frame = vid.read()
                 if not ret: raise KeyboardInterrupt
 
-                # Reshape frame to resemble raw thermal video
-                frame = cv2.resize(frame, (160, 120))
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                if stream_type == "visible":
+                    # Reshape frame to resemble raw thermal video
+                    frame = cv2.resize(frame, (640, 480))
 
-                # Write frame to shared memory
-                mem.get_lock().acquire(timeout=0.5)
-                np.copyto(frame_dst, frame.astype("uint16"))
-                mem.get_lock().release()
-                new_frame_parent.set()
+                    # Write frame to shared memory
+                    vis_mem.get_lock().acquire(timeout=0.5)
+                    np.copyto(visible_dst, frame.astype("uint8"))
+                    vis_mem.get_lock().release()
+                    new_frame_parent.set()
+                
+                elif stream_type == "thermal":
+                    # Reshape frame to resemble raw thermal video
+                    frame = cv2.resize(frame, (160, 120))
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+
+                    # Write frame to shared memory
+                    raw16_mem.get_lock().acquire(timeout=0.5)
+                    np.copyto(thermal_dst, frame.astype("uint16"))
+                    raw16_mem.get_lock().release()
+                    new_frame_parent.set()
 
             # Controls
             if running and not node.livestream_on:
@@ -102,10 +122,17 @@ def main():
                 running = False
                 tc.stop()
                 new_frame_parent.clear()
+            
             elif not running and node.livestream_on:
                 logger.info("starting worker")
                 running = True
-                tc.start(mem, new_frame_child, logging_queue)
+                
+                stream_type = node.livestream_type
+                print(stream_type)
+                if stream_type == STREAM_TYPE_THERMAL:
+                    tc.start(STREAM_TYPE_THERMAL, raw16_mem, new_frame_child, logging_queue)
+                elif stream_type == STREAM_TYPE_VISIBLE:
+                    tc.start(STREAM_TYPE_VISIBLE, vis_mem, new_frame_child, logging_queue)
             
             running = node.livestream_on
     

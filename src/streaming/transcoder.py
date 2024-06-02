@@ -1,10 +1,9 @@
 """Transcoder launcher"""
 
-from constants import HLS_DIRECTORY, HLS_M3U8_FILENAME
+from constants import FFMPEG_RTSP_PORT, FFMPEG_RTSP_URL
 from .transcoder_worker import transcoder_worker
 from  misc.launcher import Launcher
 import logging
-import os
 
 
 class Transcoder(Launcher):
@@ -15,18 +14,17 @@ class Transcoder(Launcher):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
 
-        # Compute .m3u8 directory to give to node server
-        module_path = os.path.dirname(__file__)
-        self.m3u8_path = os.path.join(module_path, HLS_DIRECTORY, HLS_M3U8_FILENAME)
-        self.m3u8_path = os.path.normpath(self.m3u8_path)
+        # Compute RTSP directory to give to node server
+        self.rtsp_url = f'rtsp://127.0.0.1:{FFMPEG_RTSP_PORT}/{FFMPEG_RTSP_URL}'
 
 
-    def start(self, raw16_mem, frame_event, log_queue):
+    def start(self, stream_type, mem, frame_event, log_queue):
         """
         Start the transcoder worker
 
         Parameters:
-        - vis_mem (multiprocessing.Array): Shared memory location of visible camera data
+        - stream_type (str): The type of stream, either "thermal" or "visible" (check constants.py)
+        - mem (multiprocessing.Array): Shared memory location of image data
         - frame_event (NewFrameConsumer): Flag that indicates when a new frame is available
         - log_queue (multiprocessing.Queue): Queue used to transfer log records from a subrocess to the main process
         """
@@ -34,7 +32,8 @@ class Transcoder(Launcher):
         super().start(
             target=transcoder_worker,
             args=(
-                raw16_mem,
+                stream_type,
+                mem,
                 frame_event,
                 self.suspend_sig,
                 log_queue,

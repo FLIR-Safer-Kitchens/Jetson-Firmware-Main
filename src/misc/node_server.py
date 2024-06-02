@@ -1,6 +1,6 @@
 """A class for communicating with the Node.js server that handles the app interface"""
 
-from constants import NODE_SERVER_PORT, STATUS_REPORT_PERIOD
+from constants import NODE_SERVER_PORT, STATUS_REPORT_PERIOD, STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE
 import threading
 import socketio
 import logging
@@ -19,9 +19,10 @@ class NodeServer:
         self._sock = socketio.Client()
 
         # Server outputs
-        self.configured    = False
-        self.livestream_on = False
-        self.alarm_on      = False
+        self.configured      = False
+        self.livestream_on   = False
+        self.livestream_type = STREAM_TYPE_THERMAL
+        self.alarm_on        = False
 
         # Define message callback
         self._sock.on("status", self.handle_message)
@@ -62,7 +63,7 @@ class NodeServer:
             self._thread = None
 
 
-    def send_status(self, cooking_coords, max_temp, unattended_time, m3u8_path=None):
+    def send_status(self, cooking_coords, max_temp, unattended_time, rtsp_url=None):
         """
         Send a status packet to the node.js server
 
@@ -81,8 +82,8 @@ class NodeServer:
             'maxTemp'      : max_temp, 
             'userLastSeen' : unattended_time
         }
-        if m3u8_path:
-            status["thermalStreamPath"] = m3u8_path
+        if rtsp_url:
+            status["thermalStreamPath"] = rtsp_url
 
         self.logger.debug(str(status))
         self._sock.emit('status', status)
@@ -102,5 +103,9 @@ class NodeServer:
             self.configured = bool(data["setupComplete"])
         if "liveStreamOn" in data: 
             self.livestream_on = bool(data["liveStreamOn"])
+        if "liveStreamType" in data:
+            stream_type = str(data["liveStreamType"]).strip()
+            if stream_type == "thermal": self.livestream_type = STREAM_TYPE_THERMAL
+            if stream_type == "visible": self.livestream_type = STREAM_TYPE_VISIBLE
         if "alarmOn" in data: 
             self.alarm_on = bool(data["alarmOn"])

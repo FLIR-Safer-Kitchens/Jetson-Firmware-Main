@@ -89,12 +89,11 @@ NODE_SERVER_PORT = 3000 # Local port that the node.js server uses
 STATUS_REPORT_PERIOD = 2 # The time in seconds between status messages sent to server
 
 # Live streaming constants
+STREAM_TYPE_THERMAL = "thermal"
+STREAM_TYPE_VISIBLE = "visible"
 FFMPEG_UDP_PORT = 12345
-HLS_DIRECTORY = "hls/" # Directory where stream segments and .m3u8 will be stored. Relative to src/streaming
-HLS_M3U8_FILENAME = "thermal.m3u8"
-HLS_KEYINFO_FILENAME = "enc.keyinfo"
-HLS_KEY_FILENAME = "enc.key"
-HLS_KEY_URI = "keys/enc.key"
+FFMPEG_RTSP_PORT = 8554
+FFMPEG_RTSP_URL = 'stream'
 
 # Alarm board constants
 AVR_BAUD_RATE = 9600 # Baud rate for serial communication

@@ -5,35 +5,15 @@ sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '.
 
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
-from constants import RAW_THERMAL_SHAPE
 from ctypes import c_uint16
 from constants import *
 from misc.logs import *
 import numpy as np
 import logging
-import time
 import cv2
-
-import socketserver
-import threading
-import http.server
-import os
 
 from streaming import Transcoder
 # from stubs import Transcoder
-
-
-# Starts the HTTP server
-def start_http_server(directory, port=8000):
-    while not os.path.isdir(directory):
-        time.sleep(0.1)
-
-    os.chdir(directory)
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        print(f"Serving HLS content on port {port}")
-        httpd.serve_forever()
-
 
 
 def main():
@@ -74,11 +54,6 @@ def main():
         # Start thread to emit worker log messages
         logging_thread = QueueListener(logging_queue)
         logging_thread.start()
-
-        # Start the HTTP server in a separate thread
-        server_thread = threading.Thread(target=start_http_server, args=(os.path.dirname(tc.m3u8_path),))
-        server_thread.daemon = True
-        server_thread.start()
         
         running = False
         while True:
@@ -92,7 +67,7 @@ def main():
                 ret = tc.handle_exceptions()
                 assert ret, "Transcoder process not recoverable"
                 logger.warning("Attempting to restart transcoder process")
-                tc.start(mem, new_frame_child, logging_queue)
+                tc.start(STREAM_TYPE_THERMAL, mem, new_frame_child, logging_queue)
             
             if running:
                 # Grab frame
@@ -122,7 +97,7 @@ def main():
             elif k == ord('s'):
                 logger.info("starting worker")
                 running = True
-                tc.start(mem, new_frame_child, logging_queue)
+                tc.start(STREAM_TYPE_THERMAL, mem, new_frame_child, logging_queue)
             elif k == ord('q'):
                 raise KeyboardInterrupt
     
