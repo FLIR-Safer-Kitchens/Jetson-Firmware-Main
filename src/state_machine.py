@@ -243,12 +243,10 @@ class StateMachine:
         """
 
         # === Report Status to Node.js ===
-        rtsp_url = self.thermal_stream.launcher.rtsp_url if self.livestream_active else None
         self.node_server.send_status(
             cooking_coords = self.cooking_coords(),
             max_temp = self.max_temp(),
-            unattended_time=self.unattended_time(),
-            rtsp_url=rtsp_url
+            unattended_time=self.unattended_time()
         )
 
         # === Handle Livestream ===

@@ -91,9 +91,7 @@ STATUS_REPORT_PERIOD = 2 # The time in seconds between status messages sent to s
 # Live streaming constants
 STREAM_TYPE_THERMAL = "thermal"
 STREAM_TYPE_VISIBLE = "visible"
-FFMPEG_UDP_PORT = 12345
-FFMPEG_RTSP_PORT = 8554
-FFMPEG_RTSP_URL = 'stream'
+STREAM_UDP_PORT = 12345
 
 # Alarm board constants
 AVR_BAUD_RATE = 9600 # Baud rate for serial communication

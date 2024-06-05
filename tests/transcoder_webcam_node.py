@@ -87,8 +87,7 @@ def main():
                     tc.start(STREAM_TYPE_VISIBLE, vis_mem, new_frame_child, logging_queue)
 
             # Send status
-            rtsp_url = tc.rtsp_url if running else None
-            node.send_status([], 69.0, 300, rtsp_url)
+            node.send_status([], 69.0, 300)
 
             if running:
                 # Grab frame

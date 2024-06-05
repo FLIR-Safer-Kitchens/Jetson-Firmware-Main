@@ -6,7 +6,6 @@ import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', "src")))
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', 'tests')))
 
-from constants import FFMPEG_RTSP_PORT, FFMPEG_RTSP_URL
 from stubs import Launcher
 import threading
 import logging
@@ -42,9 +41,6 @@ class Transcoder(Launcher):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.warning("I'M JUST A STUB")
-
-        # Compute RTSP directory to give to node server
-        self.rtsp_url = f'rtsp://127.0.0.1:{FFMPEG_RTSP_PORT}/{FFMPEG_RTSP_URL}'
 
         # Frame reading worker
         self.stop_sig1 = threading.Event()

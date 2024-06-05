@@ -63,7 +63,7 @@ class NodeServer:
         self.logger.info("Disconnected from Node.js Server")
 
 
-    def send_status(self, cooking_coords, max_temp, unattended_time, rtsp_url=None):
+    def send_status(self, cooking_coords, max_temp, unattended_time):
         """
         Send a status packet to the node.js server
 
@@ -82,8 +82,6 @@ class NodeServer:
             'maxTemp'      : max_temp, 
             'userLastSeen' : unattended_time
         }
-        if rtsp_url:
-            status["thermalStreamPath"] = rtsp_url
         self.logger.debug(str(status))
 
         # Alarm triggering emulation

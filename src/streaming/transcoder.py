@@ -1,6 +1,5 @@
 """Transcoder launcher"""
 
-from constants import FFMPEG_RTSP_PORT, FFMPEG_RTSP_URL
 from .transcoder_worker import transcoder_worker
 from  misc.launcher import Launcher
 import logging
@@ -13,9 +12,6 @@ class Transcoder(Launcher):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-
-        # Compute RTSP directory to give to node server
-        self.rtsp_url = f'rtsp://127.0.0.1:{FFMPEG_RTSP_PORT}/{FFMPEG_RTSP_URL}'
 
 
     def start(self, stream_type, mem, frame_event, log_queue):
