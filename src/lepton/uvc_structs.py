@@ -104,3 +104,75 @@ UVC_FRAME_FORMAT_I420 = 5
 UVC_FRAME_FORMAT_RGB = 7
 UVC_FRAME_FORMAT_BGR = 8
 UVC_FRAME_FORMAT_Y16 = 13
+
+
+class LEP_SYS_FFC_SHUTTER_MODE_E(c_int):
+    """Shutter mode enum"""
+    LEP_SYS_FFC_SHUTTER_MODE_MANUAL = 0
+    LEP_SYS_FFC_SHUTTER_MODE_AUTO = 1
+    LEP_SYS_FFC_SHUTTER_MODE_EXTERNAL = 2
+    LEP_SYS_FFC_SHUTTER_MODE_END = 3
+
+    def __str__(self):
+        values = {
+            0: "LEP_SYS_FFC_SHUTTER_MODE_MANUAL",
+            1: "LEP_SYS_FFC_SHUTTER_MODE_AUTO",
+            2: "LEP_SYS_FFC_SHUTTER_MODE_EXTERNAL",
+            3: "LEP_SYS_FFC_SHUTTER_MODE_END",
+        }
+        return values.get(self.value, f"Unknown({self.value})")
+
+
+class LEP_SYS_SHUTTER_TEMP_LOCKOUT_STATE_E(c_int):
+    """Shutter thermal lockout enum"""
+    LEP_SYS_SHUTTER_LOCKOUT_INACTIVE = 0
+    LEP_SYS_SHUTTER_LOCKOUT_HIGH = 1
+    LEP_SYS_SHUTTER_LOCKOUT_LOW = 2
+
+    def __str__(self):
+        values = {
+            0: "LEP_SYS_SHUTTER_LOCKOUT_INACTIVE",
+            1: "LEP_SYS_SHUTTER_LOCKOUT_HIGH",
+            2: "LEP_SYS_SHUTTER_LOCKOUT_LOW",
+        }
+        return values.get(self.value, f"Unknown({self.value})")
+
+
+class LEP_SYS_ENABLE_E(c_int):
+    """System enable/disable enum"""
+    LEP_SYS_DISABLE = 0
+    LEP_SYS_ENABLE = 1
+    LEP_END_SYS_ENABLE = 2
+
+    def __str__(self):
+        values = {
+            0: "LEP_SYS_DISABLE",
+            1: "LEP_SYS_ENABLE",
+            2: "LEP_END_SYS_ENABLE",
+        }
+        return values.get(self.value, f"Unknown({self.value})")
+
+
+class LEP_SYS_FFC_SHUTTER_MODE_OBJ_T(Structure):
+    """Big struct for all FFC/shutter stuff"""
+    _fields_ = [
+        ("shutterMode", LEP_SYS_FFC_SHUTTER_MODE_E),
+        ("tempLockoutState", LEP_SYS_SHUTTER_TEMP_LOCKOUT_STATE_E),
+        ("videoFreezeDuringFFC", LEP_SYS_ENABLE_E),
+        ("ffcDesired", LEP_SYS_ENABLE_E),
+        ("elapsedTimeSinceLastFfc", c_uint32),
+        ("desiredFfcPeriod", c_uint32),
+        ("explicitCmdToOpen", c_bool),
+        ("desiredFfcTempDelta", c_uint16),
+        ("imminentDelay", c_uint16),
+    ]
+
+    def __str__(self):
+        result = []
+        for field_name, field_type in self._fields_:
+            value = getattr(self, field_name)
+            if isinstance(value, (LEP_SYS_FFC_SHUTTER_MODE_E, LEP_SYS_SHUTTER_TEMP_LOCKOUT_STATE_E, LEP_SYS_ENABLE_E)):
+                result.append(f"{field_name}: {str(value)}")
+            else:
+                result.append(f"{field_name}: {value}")
+        return "\n".join(result)

@@ -65,7 +65,6 @@ class PureThermalUVC:
         )
         assert res == 0, f"uvc_find_device error: {res} {uvc_err_msg(res)}"
         self.dev = temp
-        print(self.ctx)
             
         # Open UVC connection to Lepton
         temp = POINTER(uvc_device_handle)()
@@ -75,7 +74,9 @@ class PureThermalUVC:
         )
         assert res == 0, f"uvc_open error: {res} {uvc_err_msg(res)}"
         self.devh = temp
-        print(self.dev)
+
+        # Disable automatic FFC
+        self._set_ffc_mode(LEP_SYS_FFC_SHUTTER_MODE_E.LEP_SYS_FFC_SHUTTER_MODE_MANUAL)
 
         # Select the format, resolution, and frame rate for the stream
         res = self.libuvc.uvc_get_stream_ctrl_format_size(
@@ -121,6 +122,34 @@ class PureThermalUVC:
         if hasattr(self, 'ctx'):
             self.libuvc.uvc_exit(self.ctx)
             delattr(self, 'ctx')
+
+
+    def _set_ffc_mode(self, mode):
+        """
+        Sets the Lepton's FFC mode. Useful for enabling/disabling automatic FFC.
+
+        Parameters:
+        - mode (int): New shutter mode. Should be a member of LEP_SYS_FFC_SHUTTER_MODE_E
+        """
+
+        # Check if device is configured
+        if not hasattr(self, 'devh'):
+            return
+
+        # Read shutter mode
+        shutter_obj = LEP_SYS_FFC_SHUTTER_MODE_OBJ_T()
+        self.libuvc.uvc_get_ctrl(self.devh, 6, 16, byref(shutter_obj), 32, 0x81)
+        self.logger.debug(f"Shutter Info:\n{str(shutter_obj)}")
+
+        # Change shutter mode
+        if shutter_obj.shutterMode == mode: return
+        shutter_obj.shutterMode = mode
+        self.libuvc.uvc_set_ctrl(self.devh, 6, 16, byref(shutter_obj), 32, 0x81)
+
+        # Check shutter mode
+        self.libuvc.uvc_get_ctrl(self.devh, 6, 16, byref(shutter_obj), 32, 0x81)
+        if shutter_obj.shutterMode != mode:
+            self.logger.warning(f"Failed to set shutter mode. Expected {str(mode)}, got {str(shutter_obj.shutterMode)}.")
 
 
     def read(self):

@@ -89,6 +89,9 @@ def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
                 assert (time.time() - last_good_frame) < PURETHERMAL_TIMEOUT, "Camera connection timed out"
                 continue
 
+            # Flip frame
+            frame = np.flipud(frame)
+
             # Copy frame to shared memory
             mem.get_lock().acquire(timeout=0.5)
             np.copyto(frame_dst, frame)
