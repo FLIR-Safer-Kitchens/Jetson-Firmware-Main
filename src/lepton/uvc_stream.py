@@ -76,7 +76,8 @@ class PureThermalUVC:
         self.devh = temp
 
         # Disable automatic FFC
-        self._set_ffc_mode(LEP_SYS_FFC_SHUTTER_MODE_E.LEP_SYS_FFC_SHUTTER_MODE_MANUAL)
+        # TODO: Was getting some new error after adding this? Resource busy or smth
+        # self._set_ffc_mode(LEP_SYS_FFC_SHUTTER_MODE_E.LEP_SYS_FFC_SHUTTER_MODE_MANUAL)
 
         # Select the format, resolution, and frame rate for the stream
         res = self.libuvc.uvc_get_stream_ctrl_format_size(
