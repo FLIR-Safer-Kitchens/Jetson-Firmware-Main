@@ -74,11 +74,7 @@ class MonitorClient:
         except BlockingIOError:
             pass
 
-        # Check if we got any frames
-        if frame_data == None:
-            return False, None
-
-        if (START_MARKER in frame_data) and (END_MARKER in frame_data):
+        if (type(frame_data) == bytes) and (START_MARKER in frame_data) and (END_MARKER in frame_data):
             # Get start and end of image
             start_idx = frame_data.index(START_MARKER)
             end_idx   = frame_data.index(END_MARKER) + len(END_MARKER)
@@ -90,7 +86,7 @@ class MonitorClient:
             frame = cv2.imdecode(frame_bytes, flags=cv2.IMREAD_UNCHANGED)
             return type(frame) == np.ndarray, frame
 
-        else: return None, False
+        else: return False, None
 
     def stop(self):
         """Close the UDP socket"""
