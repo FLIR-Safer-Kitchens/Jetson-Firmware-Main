@@ -21,7 +21,7 @@ import time
 SOCKET_PORT = 15666
 
 
-def worker(stop, raw16_mem, frame_event, log_queue):
+def worker(stop, raw16_mem, frame_event, ports):
 
     # Create numpy array backed by shared memory
     frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=raw16_mem.get_obj())
@@ -36,7 +36,9 @@ def worker(stop, raw16_mem, frame_event, log_queue):
         np.copyto(frame_dst, frame)
         raw16_mem.get_lock().release()
 
-        monitor.show(frame >> 8, 12348)
+        # Send frame oover UDP
+        if len(ports):
+            monitor.show(frame >> 8, *ports)
 
         # Set new frame flag
         frame_event.set()
@@ -90,7 +92,7 @@ class PureThermal(Launcher):
         
         if self.thread1 == None:
             self.stop_sig1.clear()
-            self.thread1 = threading.Thread(target=worker, args=(self.stop_sig1, raw16_mem, frame_event, log_queue), daemon=True)
+            self.thread1 = threading.Thread(target=worker, args=(self.stop_sig1, raw16_mem, frame_event, self.streaming_ports), daemon=True)
             self.thread1.start()
             
         super().start(None, None)

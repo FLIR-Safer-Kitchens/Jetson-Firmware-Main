@@ -27,7 +27,8 @@ from misc.node_server import NodeServer
 # from stubs.node_server_full import NodeServer
 
 from arducam import Arducam
-# from stubs import Arducam
+# from stubs.arducam_random import Arducam
+# from stubs.arducam_webcam import Arducam
 
 from lepton.polling import PureThermal
 # from stubs import PureThermal

@@ -5,6 +5,7 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '../..', "src")))
 
+from misc.monitor import MonitorServer
 from stubs.launcher import Launcher
 from constants import VISIBLE_SHAPE
 import numpy as np
@@ -13,10 +14,13 @@ import logging
 import time
 
 
-def worker(stop, vis_mem, frame_event, log_queue):
+def worker(stop, vis_mem, frame_event, ports):
 
     # Create numpy array backed by shared memory
     frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=vis_mem.get_obj())
+
+    # Create monitor server
+    monitor = MonitorServer()
 
     while not stop.is_set():
         start = time.time()
@@ -26,10 +30,15 @@ def worker(stop, vis_mem, frame_event, log_queue):
         np.copyto(frame_dst, frame)
         vis_mem.get_lock().release()
 
+        # Stream to UDP
+        if len(ports):
+            monitor.show(frame, *ports)
+
         # Set new frame flag
         frame_event.set()
         time.sleep(max(0, 1/30 - (time.time()-start)))
 
+    monitor.stop()
     frame_event.clear()
 
 
@@ -59,7 +68,7 @@ class Arducam(Launcher):
         """
         if self.thread == None:
             self.stop_sig.clear()
-            self.thread = threading.Thread(target=worker, args=(self.stop_sig, vis_mem, frame_event, log_queue), daemon=True)
+            self.thread = threading.Thread(target=worker, args=(self.stop_sig, vis_mem, frame_event, self.streaming_ports), daemon=True)
             self.thread.start()
 
         super().start(None, None)

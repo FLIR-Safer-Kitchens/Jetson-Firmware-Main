@@ -18,7 +18,8 @@ from user_detection import UserDetect
 # from stubs import UserDetect
 
 from arducam import Arducam
-# from stubs import Arducam
+# from stubs.arducam_random import Arducam
+# from stubs.arducam_webcam import Arducam
 
 
 def main():

@@ -41,9 +41,6 @@ def main():
     # Create numpy array backed by shared memory
     frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
-    # Create array for us to copy to
-    raw = np.empty_like(frame_src)
-
     # Create master event object for new frames
     new_frame_parent = NewFrameEvent()
 
@@ -58,7 +55,7 @@ def main():
     pt.streaming_ports.append(12348)
 
     # Create windows
-    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("memory", cv2.WINDOW_NORMAL)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     # Timestamp for debug messages
@@ -88,17 +85,17 @@ def main():
 
                 # Grab frame from shared memory
                 mem.get_lock().acquire(timeout=0.5)
-                np.copyto(raw, frame_src)
+                np.copyto(frame, frame_src)
                 mem.get_lock().release()
 
                 # Show image
-                color = cv2.applyColorMap(clip_norm(raw), cv2.COLORMAP_INFERNO)
-                cv2.imshow("frame", color)
+                color = cv2.applyColorMap(clip_norm(frame), cv2.COLORMAP_INFERNO)
+                cv2.imshow("memory", color)
 
                 # Get monitor view
-                ret, frame = monitor.read()
+                ret, monitor_frame = monitor.read()
                 if ret:
-                    cv2.imshow("monitor", frame)
+                    cv2.imshow("monitor", monitor_frame)
 
                 # Display detection outputs
                 if (time.time()-last_print) > 1:

@@ -6,6 +6,7 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__
 
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
+from misc.monitor import MonitorClient
 from constants import VISIBLE_SHAPE
 from ctypes import c_uint8
 from misc.logs import *
@@ -14,7 +15,8 @@ import logging
 import cv2
 
 from arducam import Arducam
-# from stubs import Arducam
+# from stubs.arducam_random import Arducam
+# from stubs.arducam_webcam import Arducam
 
 
 def main():
@@ -45,10 +47,15 @@ def main():
     new_frame_child = new_frame_parent.get_child()
 
     # Instantiate launchers
-    cam  = Arducam()
+    cam = Arducam()
+
+    # Open client monitor
+    monitor = MonitorClient(12352)
+    cam.streaming_ports.append(12352)
 
     # Create window to display frame
-    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("memory", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     try:
         # Start thread to emit worker log messages
@@ -69,8 +76,8 @@ def main():
                 logger.warning("Attempting to restart Arducam process")
                 cam.start(mem, new_frame_parent, logging_queue)
 
-            # Check for new frame
-            if new_frame_child.is_set():
+            # Check for new frame in memort
+            if running and new_frame_child.is_set():
                 new_frame_child.clear()
 
                 # Copy frame from shared memory
@@ -79,7 +86,12 @@ def main():
                 mem.get_lock().release()
 
                 # Show frame
-                cv2.imshow("frame", frame)
+                cv2.imshow("memory", frame)
+
+                # Show output on debug monitor
+                ret, monitor_frame = monitor.read()
+                if ret:
+                    cv2.imshow("monitor", monitor_frame)
 
             # Handle commands
             k = cv2.waitKey(10)
@@ -102,6 +114,7 @@ def main():
     except:
         logger.exception("")
     finally:
+        monitor.stop()
         cam.stop()
 
         logging_thread.stop()
