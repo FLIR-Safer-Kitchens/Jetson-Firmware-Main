@@ -51,7 +51,7 @@ def transcoder_worker(stream_type, mem, new, stop, log, errs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         # Create monitor
-        # monitor = MonitorServer(13023)
+        # monitor = MonitorServer()
 
     # Add errors to queue
     except BaseException as err:
@@ -81,7 +81,7 @@ def transcoder_worker(stream_type, mem, new, stop, log, errs):
                 color_frame = frame.copy()
 
             # Send frame to monitor
-            # monitor.show(color_frame)
+            # monitor.show(color_frame, 13023)
 
             # Convert frame to bytes
             frame_bytes = cv2.imencode('.jpg', color_frame, [cv2.IMWRITE_JPEG_QUALITY, comp_level])[1].tobytes()

@@ -20,9 +20,11 @@ def stream_frames(monitor_server, stop):
         while not stop.is_set():
             ret, frame = cap.read()
             assert ret, "Bad frame"
+
+            # frame = np.random.randint(0, 255, (480, 640, 3), dtype='uint8')
             
             # Show the frame using MonitorServer
-            monitor_server.show(frame)
+            monitor_server.show(frame, 12347)
             
             # Simulate processing time
             time.sleep(10e-3)
@@ -38,7 +40,7 @@ def stream_frames(monitor_server, stop):
 def main():
     try:
         # Create a MonitorServer
-        monitor_server = MonitorServer(12347)  # Choose your port
+        monitor_server = MonitorServer()
         
         # Create a MonitorClient
         monitor_client = MonitorClient(12347)  # Same port as MonitorServer
@@ -60,7 +62,6 @@ def main():
         while True:
             success, frame = monitor_client.read()  # 1 second timeout
             if not success:
-                print("READ FAIL")
                 continue
             
             # Display the received frame

@@ -46,7 +46,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
         logger.setLevel(logging.DEBUG)
 
         # Create a UDP server to send images to for debugging
-        monitor = MonitorServer(12346, 12350)
+        monitor = MonitorServer()
 
         # Choose detector based on system
         logger.debug("Intializing detector")
@@ -101,7 +101,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
             if user_detected.value: detect_ts.value = time.time()
 
             # Log detection time
-            logger.debug(f"Inference time: {tm*1000:5.2f}ms")
+            # logger.debug(f"Inference time: {tm*1000:5.2f}ms")
 
             # ========== For testing ===========
             with open(csv_filename, 'a', newline='') as csvfile:
@@ -127,7 +127,7 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
             for i, box in enumerate(boxes):
                 color = (0, 255, 0) if user_detected.value else (0, 186, 255)
                 plot_box(box, frame, color, f"{confs[i]:0.2f}")
-            monitor.show(frame)
+            monitor.show(frame, 12346, 12350)
 
         # Add errors to queue
         except BaseException as err:

@@ -35,7 +35,7 @@ def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
         configure_subprocess_log(log)
 
         # Create a UDP server to send images to for debugging
-        monitor = MonitorServer(12347)
+        monitor = MonitorServer()
 
         # Create numpy array backed by shared memory
         frame_src = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
@@ -83,7 +83,7 @@ def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
             three_chan = cv2.merge([clip_norm(frame)]*3)
             for blob in tracked_blobs:
                 blob.draw_blob(three_chan)
-            monitor.show(three_chan, 100)
+            monitor.show(three_chan, 12347)
 
         # Add errors to queue
         except BaseException as err:

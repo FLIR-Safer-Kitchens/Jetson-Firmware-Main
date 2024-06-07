@@ -26,7 +26,7 @@ def worker(stop, raw16_mem, frame_event, log_queue):
     # Create numpy array backed by shared memory
     frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=raw16_mem.get_obj())
 
-    monitor = MonitorServer(12348)
+    monitor = MonitorServer()
 
     while not stop.is_set():
         start = time.time()
@@ -36,7 +36,7 @@ def worker(stop, raw16_mem, frame_event, log_queue):
         np.copyto(frame_dst, frame)
         raw16_mem.get_lock().release()
 
-        monitor.show(frame >> 8, 100)
+        monitor.show(frame >> 8, 12348)
 
         # Set new frame flag
         frame_event.set()

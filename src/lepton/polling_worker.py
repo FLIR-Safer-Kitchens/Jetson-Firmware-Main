@@ -63,7 +63,7 @@ def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
         logger.debug("PureThermal connected")
 
         # Create monitor
-        monitor = MonitorServer(12348)
+        monitor = MonitorServer()
 
         # Timestamp for camera watchdog timer
         last_good_frame = time.time()
@@ -112,7 +112,7 @@ def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
             # Show monitor output
             frame = cv2.applyColorMap(clip_norm(frame), cv2.COLORMAP_INFERNO)
             cv2.circle(frame, t_max_loc, 3, (0, 255, 0), -1)
-            monitor.show(frame, 100)
+            monitor.show(frame, 12348)
 
         # Add errors to queue
         except BaseException as err:
