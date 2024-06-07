@@ -34,6 +34,7 @@ class UserDetect(Launcher):
             args=(
                 vis_mem,
                 frame_event,
+                self.streaming_ports,
                 self.suspend_sig,
                 log_queue,
                 self.exception_queue,

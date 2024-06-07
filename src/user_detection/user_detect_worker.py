@@ -23,7 +23,7 @@ elif platform.system() == 'Linux':
 
 
 
-def user_detect_worker(mem, new, stop, log, errs, detect_ts):
+def user_detect_worker(mem, new, ports, stop, log, errs, detect_ts):
     """
     Main user detection loop
 
@@ -118,16 +118,15 @@ def user_detect_worker(mem, new, stop, log, errs, detect_ts):
                 csvfile.flush()
 
             # Add index to frame
-            tl = 3
-            tf = 2
-            cv2.putText(frame, str(frame_index), (5, 480-5), 0, tl/2, [0, 0, 255], thickness=tf, lineType=cv2.LINE_AA,)
+            cv2.putText(frame, str(frame_index), (5, 480-5), 0, 3/2, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA,)
             # ==================================
 
             # Show debug output on monitor
-            for i, box in enumerate(boxes):
-                color = (0, 255, 0) if user_detected.value else (0, 186, 255)
-                plot_box(box, frame, color, f"{confs[i]:0.2f}")
-            monitor.show(frame, 12346, 12350)
+            if len(ports):
+                for i, box in enumerate(boxes):
+                    color = (0, 255, 0) if user_detected.value else (0, 186, 255)
+                    plot_box(box, frame, color, f"{confs[i]:0.2f}")
+                monitor.show(frame, *ports)
 
         # Add errors to queue
         except BaseException as err:

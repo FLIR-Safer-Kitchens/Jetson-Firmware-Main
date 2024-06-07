@@ -51,10 +51,12 @@ def main():
 
     # Instantiate monitor
     monitor = MonitorClient(12346)
+    user.streaming_ports.append(12346)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     # Instantiate recording
     recorder = RecordingClient(12350, f"recording_{round(time.time())}.mp4")
+    user.streaming_ports.append(12350)
 
     try:
         # Start thread to emit worker log messages

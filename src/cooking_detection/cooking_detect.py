@@ -14,7 +14,7 @@ class CookingDetect(Launcher):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
 
-        # Detection flags
+        # Coordinates of cooking blob centroids
         self.cooking_coords = Manager().list()
 
 
@@ -33,6 +33,7 @@ class CookingDetect(Launcher):
             args=(
                 raw16_mem,
                 frame_event,
+                self.streaming_ports,
                 self.suspend_sig,
                 log_queue,
                 self.exception_queue,

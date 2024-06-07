@@ -15,13 +15,14 @@ import time
 import cv2
 
 
-def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
+def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
     """
     Main polling loop for PureThermal Lepton driver
 
     Parameters:
     - mem (multiprocessing.Array): Shared memory location of raw thermal image data
     - new (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
+    - ports (list (int)): List of UDP ports to stream image data to
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
@@ -110,9 +111,10 @@ def polling_worker(mem, new, stop, log, errs, max_temp, hotspot):
             hotspot.value = hotspot_detected.value
 
             # Show monitor output
-            frame = cv2.applyColorMap(clip_norm(frame), cv2.COLORMAP_INFERNO)
-            cv2.circle(frame, t_max_loc, 3, (0, 255, 0), -1)
-            monitor.show(frame, 12348)
+            if len(ports):
+                frame = cv2.applyColorMap(clip_norm(frame), cv2.COLORMAP_INFERNO)
+                # cv2.circle(frame, t_max_loc, 3, (0, 255, 0), -1)
+                monitor.show(frame, *ports)
 
         # Add errors to queue
         except BaseException as err:

@@ -1,7 +1,7 @@
 """Parent class for launching worker processes"""
 
 from constants import EXCEPTION_HISTORY_WINDOW, ALLOWABLE_EXCEPTION_COUNT
-from multiprocessing import Process, Event, get_context
+from multiprocessing import Process, Event, get_context, Manager
 import multiprocessing.queues
 from queue import Full, Empty
 import logging
@@ -17,6 +17,10 @@ class Launcher:
 
         # Process object of worker
         self.worker_proc = None
+
+        # UDP ports to stream image data to
+        # Used for debugging and livestreaming
+        self.streaming_ports = Manager().list()
         
         # Queue to dump exceptions if worker dies
         self.exception_queue = ExceptionQueue(5)

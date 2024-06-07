@@ -41,15 +41,15 @@ def main():
     # Create child event object for reader process
     new_frame_child = new_frame_parent.get_child()
 
-    # Create monitor
-    monitor = MonitorClient(13023)
-
     # Create transcoder launcher object
     tc = Transcoder()
 
     # Create purethermal process
     pt = PureThermal()
-    
+
+    # Create monitor
+    monitor = MonitorClient(13023)
+    pt.streaming_ports.append(13023)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     try:

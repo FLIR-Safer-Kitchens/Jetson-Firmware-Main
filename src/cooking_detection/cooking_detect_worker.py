@@ -12,13 +12,14 @@ import cv2
 
 
 
-def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
+def cooking_detect_worker(mem, new, ports, stop, log, errs, cooking_coords):
     """
     Main cooking detection loop
 
     Parameters:
     - mem (multiprocessing.Array): Shared memory location of raw16 image data
     - new (NewFrameConsumer): Flag that indicates when a new frame is available
+    - ports (list (int)): List of UDP ports to stream image data to
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
@@ -80,10 +81,11 @@ def cooking_detect_worker(mem, new, stop, log, errs, cooking_coords):
             cooking_coords[:] = [list(b.centroid) for b in tracked_blobs if b.is_cooking()]
 
             # Output to debug monitor
-            three_chan = cv2.merge([clip_norm(frame)]*3)
-            for blob in tracked_blobs:
-                blob.draw_blob(three_chan)
-            monitor.show(three_chan, 12347)
+            if len(ports):
+                three_chan = cv2.merge([clip_norm(frame)]*3)
+                for blob in tracked_blobs:
+                    blob.draw_blob(three_chan)
+                monitor.show(three_chan, *ports)
 
         # Add errors to queue
         except BaseException as err:

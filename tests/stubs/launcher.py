@@ -1,5 +1,6 @@
 """Parent class for launching worker processes"""
 
+from multiprocessing import Manager
 import logging
 
 
@@ -9,6 +10,10 @@ class Launcher:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
+
+        # UDP ports to stream image data to
+        # Used for debugging and livestreaming
+        self.streaming_ports = Manager().list()
 
         # Fake variables
         self.running_val = False

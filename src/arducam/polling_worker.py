@@ -1,6 +1,7 @@
 """Worker process for polling Arducam"""
 
 from misc.logs import configure_subprocess_log
+from misc.monitor import MonitorServer
 from constants import *
 import numpy as np
 import subprocess
@@ -10,13 +11,14 @@ import time
 import cv2
 
 
-def polling_worker(mem, new, stop, log, errs):
+def polling_worker(mem, new, ports, stop, log, errs):
     """
     Main polling loop for Arducam
 
     Parameters:
     - mem (multiprocessing.Array): Shared memory location of visible image data
     - new (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
+    - ports (list (int)): List of UDP ports to stream image data to
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
@@ -60,6 +62,9 @@ def polling_worker(mem, new, stop, log, errs):
         
         logger.debug("Arducam opened sucessfully")
 
+        # Create monitor for UDP streaming
+        monitor = MonitorServer()
+
         # Create numpy array backed by shared memory
         frame_dst = np.ndarray(shape=VISIBLE_SHAPE, dtype='uint8', buffer=mem.get_obj())
 
@@ -88,8 +93,7 @@ def polling_worker(mem, new, stop, log, errs):
             frame = cv2.flip(frame, 0)
 
             # Undistort frame 
-            # Copies data to shared memory
-            mem.get_lock().acquire(timeout=0.5)
+            # TODO: Have the maxrix preform the flipping
             frame = cv2.undistort(
                 src=frame, 
                 cameraMatrix=np.array(ARDUCAM_CALIB),
@@ -97,10 +101,18 @@ def polling_worker(mem, new, stop, log, errs):
                 dst=frame_dst, 
                 newCameraMatrix=np.array(ARDUCAM_NEW_CAM)
             )
+            
+            # Copy data to shared memory
+            mem.get_lock().acquire(timeout=0.5)
+            np.copyto(frame_dst, frame)
             mem.get_lock().release()
 
             # Set new frame flag
             new.set()
+
+            # Stream data over UDP
+            if len(ports):
+                monitor.show(frame, *ports)
 
         # Add errors to queue
         except BaseException as err:
@@ -111,7 +123,10 @@ def polling_worker(mem, new, stop, log, errs):
     # === Terminate ===
     try:
         try: vidcap.release()
-        except UnboundLocalError: pass # vidcap not yet created
+        except UnboundLocalError: pass
+
+        try: monitor.stop()
+        except UnboundLocalError: pass
 
         new.clear() # Invalidate last data
 

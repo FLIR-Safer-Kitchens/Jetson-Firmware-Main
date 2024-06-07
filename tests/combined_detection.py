@@ -19,18 +19,18 @@ import logging
 import cv2
 
 # Switch between stubs and real modules
-# from misc.alarm import AlarmBoard
-from stubs import AlarmBoard
+from misc.alarm import AlarmBoard
+# from stubs import AlarmBoard
 
-# from misc.node_server import NodeServer
-from stubs.node_server_basic import NodeServer
+from misc.node_server import NodeServer
+# from stubs.node_server_basic import NodeServer
 # from stubs.node_server_full import NodeServer
 
-# from arducam import Arducam
-from stubs import Arducam
+from arducam import Arducam
+# from stubs import Arducam
 
-# from lepton.polling import PureThermal
-from stubs import PureThermal
+from lepton.polling import PureThermal
+# from stubs import PureThermal
 
 from user_detection import UserDetect
 # from stubs import UserDetect
@@ -149,12 +149,15 @@ def main():
 
     # Instantiate debug monitors
     user_monitor = MonitorClient(12346)
+    user_detect_proc.streaming_ports.append(12346)
     cv2.namedWindow("User Detection", cv2.WINDOW_NORMAL)
 
     cooking_monitor = MonitorClient(12347)
+    cooking_detect_proc.streaming_ports.append(12347)
     cv2.namedWindow("Cooking Detection", cv2.WINDOW_NORMAL)
 
     lepton_monitor = MonitorClient(12348)
+    purethermal_proc.streaming_ports.append(12348)
     cv2.namedWindow("Lepton View", cv2.WINDOW_NORMAL)
 
     try:

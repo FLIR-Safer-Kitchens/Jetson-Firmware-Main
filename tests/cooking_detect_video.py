@@ -53,6 +53,7 @@ def main():
 
     # Instantiate monitor
     monitor = MonitorClient(12347)
+    cd.streaming_ports.append(12347)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     # Load lepton video

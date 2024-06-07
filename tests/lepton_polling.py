@@ -55,8 +55,9 @@ def main():
 
     # Open client monitor
     monitor = MonitorClient(12348)
+    pt.streaming_ports.append(12348)
 
-    # Create window
+    # Create windows
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
