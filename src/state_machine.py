@@ -1,6 +1,6 @@
 """State machine for main process"""
 
-from constants import STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE
+from constants import STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE, STREAM_UDP_PORT
 from misc.node_server import NodeServer
 from misc.launcher import Launcher
 from misc.alarm import AlarmBoard
@@ -28,6 +28,7 @@ class WorkerProcess:
 
         # Expose launcher functions
         self.running = self.launcher.running
+        self.streaming_ports = self.launcher.streaming_ports
         self.handle_exceptions = self.launcher.handle_exceptions
 
     def start(self):
@@ -52,9 +53,7 @@ class StateMachine:
             arducam:        WorkerProcess,
             purethermal:    WorkerProcess, 
             user_detect:    WorkerProcess, 
-            cooking_detect: WorkerProcess,
-            thermal_stream: WorkerProcess,
-            visible_stream: WorkerProcess
+            cooking_detect: WorkerProcess
         ):
         """
 
@@ -65,8 +64,6 @@ class StateMachine:
         - purethermal (WorkerProcess): Purethermal polling launcher and args
         - user_detect (WorkerProcess): User detection launcher and args
         - cooking_detect (WorkerProcess): Cooking detection launcher and args
-        - thermal_stream (WorkerProcess): Transcoder launcher with thermal args
-        - visible_stream (WorkerProcess): Transcoder launcher with visible args
         """
 
         # Get logger
@@ -84,17 +81,13 @@ class StateMachine:
         self.purethermal = purethermal
         self.user_detect = user_detect
         self.cooking_detect = cooking_detect
-        self.thermal_stream = thermal_stream
-        self.visible_stream = visible_stream
 
         # Bundle workers for easier iteration
         self.workers = (
             self.arducam, 
             self.purethermal, 
             self.user_detect, 
-            self.cooking_detect, 
-            self.thermal_stream,
-            self.visible_stream
+            self.cooking_detect
         )
 
         # Initialize system state
@@ -113,12 +106,10 @@ class StateMachine:
         self.unattended_time      = lambda: (time.time() - self.user_detect.launcher.last_detected.value)
 
         # Add an attribute to indicate when a worker should be on
-        self.arducam.on_condition        = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM or (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE)
+        self.arducam.on_condition        = lambda: self.current_state in {STATE_ACTIVE, STATE_ALARM} or (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE)
         self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL)
         self.user_detect.on_condition    = lambda: self.current_state != STATE_SETUP
         self.cooking_detect.on_condition = lambda: self.current_state == STATE_ACTIVE or self.current_state == STATE_ALARM
-        self.thermal_stream.on_condition = lambda: self.livestream_active
-        self.visible_stream.on_condition = lambda: self.livestream_active
 
 
     def _set_state(self, next_state):
@@ -251,44 +242,45 @@ class StateMachine:
 
         # === Handle Livestream ===
         # Check if user has requested the livestream
-        prev = self.livestream_active
+        on_prev = self.livestream_active
         self.livestream_active = self.node_server.livestream_on
 
         # Start livestream
-        if self.livestream_active and not prev:
+        if self.livestream_active and not on_prev:
+            # Check the requested stream type
             self.livestream_type = self.node_server.livestream_type
 
             # Thermal
             if self.livestream_type == STREAM_TYPE_THERMAL:
                 if self.current_state == STATE_SETUP:
                     self.purethermal.start()
-                self.thermal_stream.start()
+                self.purethermal.streaming_ports.append(STREAM_UDP_PORT)
            
             # Visible
             elif self.livestream_type == STREAM_TYPE_VISIBLE:
                 if self.current_state not in {STATE_ACTIVE, STATE_ALARM}:
                     self.arducam.start()
-                self.visible_stream.start()
+                self.arducam.streaming_ports.append(STREAM_UDP_PORT)
 
         # Stop livestream
-        elif not self.livestream_active and prev:
+        elif not self.livestream_active and on_prev:
             # Thermal
             if self.livestream_type == STREAM_TYPE_THERMAL:
-                if not self.thermal_stream.stop(check_exceptions=True):
-                    return False
-            
                 if self.current_state == STATE_SETUP:
                     if not self.purethermal.stop(check_exceptions=True):
                         return False
+                
+                idx = self.purethermal.streaming_ports.index(STREAM_UDP_PORT)
+                self.purethermal.streaming_ports.pop(idx)
             
             # Visible
             elif self.livestream_type == STREAM_TYPE_VISIBLE:
-                if not self.visible_stream.stop(check_exceptions=True):
-                    return False
-                
                 if self.current_state not in {STATE_ACTIVE, STATE_ALARM}:
                     if not self.arducam.stop(check_exceptions=True):
                         return False
+                
+                idx = self.arducam.streaming_ports.index(STREAM_UDP_PORT)
+                self.arducam.streaming_ports.pop(idx)
 
         # === Handle State Transitions ===
         # Setup state (Device not configured)

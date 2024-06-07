@@ -5,7 +5,7 @@ import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 # Muliprocessing stuff
-from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE, STREAM_TYPE_VISIBLE, STREAM_TYPE_THERMAL
+from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
 from state_machine import StateMachine, WorkerProcess
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
@@ -38,9 +38,6 @@ from user_detection import UserDetect
 from cooking_detection import CookingDetect
 # from stubs import CookingDetect
 
-from streaming import Transcoder
-# from stubs import Transcoder
-
 
 
 def main():
@@ -69,8 +66,6 @@ def main():
     # Get a different child event for each process that reads frame data
     user_det_frame_event    = vis_frame_parent.get_child()
     cooking_det_frame_event = raw16_frame_parent.get_child()
-    thermal_stream_frame_event = raw16_frame_parent.get_child()
-    visible_stream_frame_event = vis_frame_parent.get_child()
 
     # Instantiate alarm board
     alarm = AlarmBoard()
@@ -83,7 +78,6 @@ def main():
     purethermal_proc    = PureThermal()
     user_detect_proc    = UserDetect()
     cooking_detect_proc = CookingDetect()
-    livestream_proc     = Transcoder()
 
     # Pass launchers and their arguments to the main state machine
     state_machine = StateMachine(
@@ -122,26 +116,6 @@ def main():
             start_args=(
                 raw16_mem,
                 cooking_det_frame_event,
-                logging_queue
-            )
-        ),
-        thermal_stream=WorkerProcess(
-            name="Thermal Livestream",
-            launcher=livestream_proc,
-            start_args=(
-                STREAM_TYPE_THERMAL,
-                raw16_mem,
-                thermal_stream_frame_event,
-                logging_queue
-            )
-        ),
-        visible_stream=WorkerProcess(
-            name="Visible Livestream",
-            launcher=livestream_proc,
-            start_args=(
-                STREAM_TYPE_VISIBLE,
-                vis_mem,
-                visible_stream_frame_event,
                 logging_queue
             )
         )
@@ -210,7 +184,6 @@ def main():
         purethermal_proc.stop()
         user_detect_proc.stop()
         cooking_detect_proc.stop()
-        livestream_proc.stop()
 
         # Shut down node server connection
         node.disconnect()
