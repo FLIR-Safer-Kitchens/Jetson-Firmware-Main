@@ -32,7 +32,7 @@ def worker(stop, vis_mem, frame_event, ports):
         ret, frame = cap.read()
         if not ret: continue
 
-        vis_mem.get_lock().acquire(timeout=0.5)
+        if not vis_mem.get_lock().acquire(timeout=0.5): continue
         np.copyto(frame_dst, frame)
         vis_mem.get_lock().release()
 

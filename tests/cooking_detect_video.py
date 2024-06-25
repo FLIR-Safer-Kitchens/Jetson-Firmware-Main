@@ -84,7 +84,7 @@ def main():
                 if not ret: raise KeyboardInterrupt
 
                 # Write frame to shared memory
-                mem.get_lock().acquire(timeout=0.5)
+                if not mem.get_lock().acquire(timeout=0.5): continue
                 np.copyto(frame_dst, frame)
                 mem.get_lock().release()
                 new_frame_parent.set()

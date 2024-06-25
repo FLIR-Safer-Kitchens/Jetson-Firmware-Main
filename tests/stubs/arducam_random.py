@@ -26,7 +26,7 @@ def worker(stop, vis_mem, frame_event, ports):
         start = time.time()
         frame = np.random.randint(0, 255, VISIBLE_SHAPE, dtype='uint8')
 
-        vis_mem.get_lock().acquire(timeout=0.5)
+        if not vis_mem.get_lock().acquire(timeout=0.5): continue
         np.copyto(frame_dst, frame)
         vis_mem.get_lock().release()
 

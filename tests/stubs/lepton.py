@@ -32,7 +32,7 @@ def worker(stop, raw16_mem, frame_event, ports):
         start = time.time()
         frame = np.random.randint(0, 2**16-1, RAW_THERMAL_SHAPE, dtype='uint16')
 
-        raw16_mem.get_lock().acquire(timeout=0.5)
+        if not raw16_mem.get_lock().acquire(timeout=0.5): continue
         np.copyto(frame_dst, frame)
         raw16_mem.get_lock().release()
 
