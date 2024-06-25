@@ -29,7 +29,7 @@ class Launcher:
         self.suspend_sig = Event()
 
         # Exception recovery
-        self.exception_whitelist = [] # List of acceptable errors
+        self.exception_whitelist = [] # List of non-fatal errors
         self.exception_history   = [] # Timestamps of recent non-fatal errors
         self.exception_history_window  = EXCEPTION_HISTORY_WINDOW  # See constants.py, provided here to allow overrides
         self.allowable_exception_count = ALLOWABLE_EXCEPTION_COUNT # See constants.py, provided here to allow overrides
@@ -42,7 +42,8 @@ class Launcher:
 
     def handle_exceptions(self):
         """
-        If the process dies unexpectedly, call this function to determine if the error is fatal\n
+        If the process dies unexpectedly, call this function to determine if the error is fatal.
+
         Returns (bool): False for fatal error, or too many errors in a given period
 
         Note: Child classes of Launcher should set their own exception whitelist
@@ -141,7 +142,8 @@ class Launcher:
 
 class ExceptionQueue(multiprocessing.queues.Queue):
     """
-    Wrapper for multiprocessing Queue\n
+    Wrapper for multiprocessing Queue.
+
     Gracefully handles puts to full Queue
     """
     def __init__(self, maxsize: int = 0) -> None:
@@ -163,7 +165,8 @@ class ExceptionQueue(multiprocessing.queues.Queue):
     
     def to_list(self):
         """
-        Pop all queue items and return them as a list\n
+        Pop all queue items and return them as a list
+        
         Notes: This method is dumb; don't let other processes modify the queue while this is running
         """
         out = []

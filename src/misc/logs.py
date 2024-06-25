@@ -11,7 +11,8 @@ import sys
 
 class SizeLimitedQueueHandler(QueueHandler):
     """
-    Wrapper for logging.handlers.QueueHandler\n
+    Wrapper for logging.handlers.QueueHandler
+
     Gracefully handles puts to full Queue
     """
     def emit(self, record: LogRecord) -> None:
@@ -88,8 +89,9 @@ def configure_main_log(to_file=True, to_term=True):
 
 class QueueListener():
     """
-    Class for managing the thread that handles worker logs\n
-    Notes: to not create multiple instances of this class for a particular queue
+    Class for managing the thread that handles worker logs
+
+    Notes: Do not create multiple instances of this class for a particular queue
     """
 
     def __init__(self, queue):
@@ -108,7 +110,8 @@ class QueueListener():
 
     def start(self):
         """
-        Start the listener thread\n
+        Start the listener thread
+        
         Listener will read from the shared logging queue and emit log messages in the main process
         """
         # Check running
@@ -146,7 +149,7 @@ class QueueListener():
         while not stop.is_set():
             # Pull the first entry from the log queue
             try: record = queue.get_nowait()
-            except Empty: time.sleep(0.1)
+            except Empty: time.sleep(50e-3)
             else:
                 # Emit log message in main process
                 logger = logging.getLogger(record.name)
