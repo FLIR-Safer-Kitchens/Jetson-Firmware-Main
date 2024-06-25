@@ -5,7 +5,8 @@ from multiprocessing import get_context
 
 class NewFrameEvent():
     """
-    Manages a list of child events\n
+    Manages a list of child events.
+
     Setting and clearing is performed on all children
     """
 
@@ -29,8 +30,9 @@ class NewFrameEvent():
 
 class NewFrameConsumer(Event):
     """
-    Wrapper for multiprocessing.Event that allows the Event to be enabled/disabled\n
-    This can be used to 'pause' a worker process that consumes video data
+    Wrapper for multiprocessing.Event that allows the Event to be enabled/disabled.
+
+    'enabled' property can be used to 'pause' a worker process that consumes video data
     """
 
     def __init__(self) -> None:
@@ -50,5 +52,5 @@ class NewFrameConsumer(Event):
             super().clear()
 
     def set(self):
-        """Only allows set() to take effect when enabled"""
+        # Only allows set() to take effect when enabled
         if self.enabled: super().set()
