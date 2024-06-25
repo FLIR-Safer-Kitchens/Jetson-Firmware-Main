@@ -9,8 +9,8 @@ from misc.logs import configure_main_log
 import threading
 import time
 
-from misc.node_server import NodeServer
-# from stubs.node_server_basic import NodeServer
+# from misc.node_server import NodeServer
+from stubs.node_server_basic import NodeServer
 # from stubs.node_server_full import NodeServer
 
 
