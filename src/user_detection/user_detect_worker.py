@@ -52,7 +52,6 @@ def user_detect_worker(mem, new, ports, stop, log, errs, detect_ts):
         logger.debug("Intializing detector")
         if platform.system() == 'Windows':
             detector = WindowsDetect()
-
         elif platform.system() == 'Linux':
             detector = JetsonDetect()
         logger.debug("Detector ready")
@@ -64,7 +63,7 @@ def user_detect_worker(mem, new, ports, stop, log, errs, detect_ts):
         frame = np.empty_like(frame_src)
 
         # Detection state
-        user_detected = HysteresisBool(2, 4)
+        user_detected = HysteresisBool(USER_TRIP_TIME, USER_RELEASE_TIME)
 
         # ========== For testing ===========
         # Initialize csv
@@ -91,7 +90,7 @@ def user_detect_worker(mem, new, ports, stop, log, errs, detect_ts):
             else: new.clear()
 
             # Copy frame from shared memory
-            mem.get_lock().acquire(timeout=0.2)
+            if not mem.get_lock().acquire(timeout=0.2): continue
             np.copyto(frame, frame_src)
             mem.get_lock().release()
 
@@ -136,7 +135,8 @@ def user_detect_worker(mem, new, ports, stop, log, errs, detect_ts):
 
     # === Terminate ===
     try:
-        monitor.stop()
+        try: monitor.stop()
+        except UnboundLocalError: pass
 
     # Add errors to queue
     except BaseException as err:
@@ -200,7 +200,7 @@ class WindowsDetect:
 
     def detect(self, img):
         """
-        Perform sYOLOv8 inference on an image
+        Performs YOLOv8 inference on an image
 
         Parameters:
         - img (numpy.ndarray): The image to be analyzed
