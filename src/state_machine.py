@@ -56,7 +56,6 @@ class StateMachine:
             cooking_detect: WorkerProcess
         ):
         """
-
         Parameters:
         - node_server (NodeServer): The node.js server object  
         - alarm_board (AlarmBoard): The alarm board server object
@@ -96,7 +95,6 @@ class StateMachine:
         self.livestream_type = ""
 
         # Macro for pausing user detection
-        # TODO: Does this work lol
         self.user_detection_enabled = self.user_detect.start_args[1].enabled
 
         # Helpful lambdas for getting process outputs
@@ -105,7 +103,7 @@ class StateMachine:
         self.cooking_coords       = lambda: self.cooking_detect.launcher.cooking_coords[:]
         self.unattended_time      = lambda: (time.time() - self.user_detect.launcher.last_detected.value)
 
-        # Add an attribute to indicate when a worker should be on
+        # Lambdas to check whether a worker should be on
         self.arducam.on_condition        = lambda: self.current_state in {STATE_ACTIVE, STATE_ALARM} or (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE)
         self.purethermal.on_condition    = lambda: self.current_state != STATE_SETUP or (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL)
         self.user_detect.on_condition    = lambda: self.current_state != STATE_SETUP
