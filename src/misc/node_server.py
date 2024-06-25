@@ -34,7 +34,6 @@ class NodeServer:
         self.last_status_ts = 0
 
 
-
     def connect(self, port=NODE_SERVER_PORT):
         """
         Connect to the node.js server
@@ -103,7 +102,8 @@ class NodeServer:
             self.livestream_on = bool(data["liveStreamOn"])
         if "liveStreamType" in data:
             stream_type = str(data["liveStreamType"]).strip()
-            if stream_type == "thermal": self.livestream_type = STREAM_TYPE_THERMAL
-            if stream_type == "visible": self.livestream_type = STREAM_TYPE_VISIBLE
+            if stream_type in {STREAM_TYPE_THERMAL, STREAM_TYPE_VISIBLE}:
+                self.livestream_type = stream_type
+            else: self.logger.warning(f"Got invalid stream type: {stream_type}")
         if "alarmOn" in data: 
             self.alarm_on = bool(data["alarmOn"])
