@@ -1,12 +1,15 @@
 """
-Debug monitor for multiprocessing subprocesses.\n
-Linux doesn't like when you try to open windows in child processes.\n
+Debug monitor for multiprocessing subprocesses.
+
+Linux doesn't like when you try to open windows in child processes.
+
 My workaround is to stream frames over UDP and display them in the main process
 """
 
 import numpy as np
 import threading
 import socket
+import time
 import cv2
 
 # Maximum UDP packet size
@@ -159,8 +162,8 @@ class RecordingClient:
         """Continuously reads frames from the UDP socket and writes to video file"""
         while not self.suspend_sig.is_set():
             ret, frame = read_udp_jpeg(self.sock)
-            if ret:
-                self.writer.write(frame)
+            if ret: self.writer.write(frame)
+            else: time.sleep(10e-3)
 
 
     def stop(self):
@@ -180,7 +183,8 @@ class RecordingClient:
 
 def read_udp_jpeg(sock, packet_sz=MAX_UDP_PACKET_SIZE):
     """
-    Reads a JPEG-encoded image from UDP.\n
+    Reads a JPEG-encoded image from UDP.
+    
     Supports reading at a lower rate than incoming data.
 
     Parameters:
