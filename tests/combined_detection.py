@@ -5,7 +5,7 @@ import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
 # Muliprocessing stuff
-from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE
+from constants import VISIBLE_SHAPE, RAW_THERMAL_SHAPE, STREAM_UDP_PORT
 from state_machine import StateMachine, WorkerProcess
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
@@ -135,6 +135,9 @@ def main():
     purethermal_proc.streaming_ports.append(12348)
     cv2.namedWindow("Lepton View", cv2.WINDOW_NORMAL)
 
+    stream_monitor = MonitorClient(STREAM_UDP_PORT)
+    cv2.namedWindow("Stream View", cv2.WINDOW_NORMAL)
+
     try:
         # Start thread to emit worker log messages
         logging_thread = QueueListener(logging_queue)
@@ -169,6 +172,9 @@ def main():
             ret, monitor_frame = lepton_monitor.read()
             if ret: cv2.imshow("Lepton View", monitor_frame)
 
+            ret, monitor_frame = stream_monitor.read()
+            if ret: cv2.imshow("Stream View", monitor_frame)
+
             # Delay
             if cv2.waitKey(50) & 0xFF == ord('q'):
                 raise KeyboardInterrupt
@@ -197,6 +203,7 @@ def main():
         user_monitor.stop()
         cooking_monitor.stop()
         lepton_monitor.stop()
+        stream_monitor.stop()
         cv2.destroyAllWindows()
 
         # Shut down loggers
