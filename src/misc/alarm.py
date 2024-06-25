@@ -17,7 +17,8 @@ class AlarmBoard:
 
     def __send_cmd(self, cmd: str):
         """
-        Send a command to the alarm board\n
+        Send a command to the alarm board.
+
         Parameters:
         - cmd (str): the command to send
 
@@ -42,6 +43,7 @@ class AlarmBoard:
     def __read_str(self):
         """
         Receive data from the alarm board.
+
         Returns (str): Decoded message or empty string on error/no data available
         """
         try: 
@@ -61,8 +63,7 @@ class AlarmBoard:
         # Close any existing connections
         self.disconnect()
 
-        RETRIES = 15
-        for retry in range(RETRIES):
+        for retry in range(AVR_CONNECTION_RETRIES):
             # Find the first device matching the
             # USB vendor/product ID
             com_ports = serial.tools.list_ports.comports()
@@ -73,8 +74,11 @@ class AlarmBoard:
             
             # Re-attempt connection
             else: 
-                self.logger.warning(f"Failed to find microcontroller. Retry: ({retry+1}/{RETRIES})")
-                time.sleep(2)
+                self.logger.warning(
+                    f"Failed to find microcontroller. \
+                    Retry: ({retry+1}/{AVR_CONNECTION_RETRIES})"
+                )
+                time.sleep(AVR_RETRY_COOLDOWN)
                 continue
             
             # Microcontroller found
@@ -83,7 +87,6 @@ class AlarmBoard:
 
         # Microcontroller could not be found
         else: assert False, "Microcontroller not found"
-
 
         # Establish the serial connection
         self.ser = Serial(
