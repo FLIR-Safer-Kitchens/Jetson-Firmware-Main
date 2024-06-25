@@ -1,7 +1,7 @@
 """
 Wrapper for the YoloV7 TensorRT engine
 
-Slightly modified version of https://github.com/mailrocketsystems/JetsonYoloV7-TensorRT?tab=GPL-3.0-1-ov-file#readme
+Slightly modified version of https://github.com/mailrocketsystems/JetsonYoloV7-TensorRT
 
 Licensed under GPL-3, see build_engine/
 """
