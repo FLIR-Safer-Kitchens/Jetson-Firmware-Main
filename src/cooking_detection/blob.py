@@ -1,6 +1,5 @@
 """Class for blob stuff"""
 
-from constants import COOKING_TRIP_TIME, COOKING_RELEASE_TIME
 from misc.hysteresis import HysteresisBool
 from lepton.utils import raw2temp
 from .theil_sen import theil_sen
@@ -49,6 +48,8 @@ class Blob:
         self.centroid = (centroid_x, centroid_y)
 
         # Compute average temperature
+        # TODO: Use median for better outlier robustness? 
+        # self.temp = np.median(thermal_img[self.mask==255]) 
         self.temp = cv2.mean(thermal_img, self.mask)[0]
         self.temp = raw2temp(self.temp)
 
@@ -67,9 +68,10 @@ class Blob:
 
     def compare(self, other):
         """
-        Compare two blobs\n
+        Compare two blobs
+        
         Parameters:
-        - other (Blob): The blob to compare with
+        - other (Blob): The blob to compare against
 
         Returns (float): Similarity score [0, 1] where 1 is a perfect match
         """
@@ -93,11 +95,11 @@ class Blob:
         # [0, 1] 1 for identical area
         size = min(self.area, other.area) / max(self.area, other.area)
 
-        # Compute weighted average
+        # Compute weighted average of sub-scores
         scores = (overlap, distance, temp, size)
         score = np.dot(SIM_SCORE_WEIGHTS, scores) / sum(SIM_SCORE_WEIGHTS)
 
-        # Coerce overall score to zero if any scores are extremely low
+        # Coerce overall score to zero if any sub-scores are extremely low
         if any(s < SIM_SCORE_MIN for s in scores): score = 0
 
         return score
@@ -105,7 +107,8 @@ class Blob:
 
     def merge(self, other):
         """
-        Combine two blobs\n
+        Combine two blobs
+
         Parameters:
         - other (Blob): The blob to combine with
 
@@ -135,7 +138,8 @@ class Blob:
 
     def is_cooking(self):
         """
-        Examine history and determine if the blob is associated with cooking\n
+        Examine history and determine if the blob is associated with cooking
+
         Returns (bool): True if blob is associated with cooking
         """
         # If there's no new data,
@@ -148,9 +152,9 @@ class Blob:
         temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
         temp_history = np.array(temp_history)
 
-        # For debugging
+        # Log history to CSV
         # if time.time() - self.first_detected > 10:
-        #     filename = f"history_{round(self.first_detected % 1000)}.csv"
+        #     filename = f"blob_history_" + "_".join([str(c) for c in self.color]) + ".csv"
         #     np.savetxt(filename, temp_history, delimiter = ",")
 
         # Not enough samples to make a prediction yet
@@ -160,13 +164,13 @@ class Blob:
         # Find slope using Theil-Sen estimator
         slope = theil_sen(temp_history[:,0], temp_history[:,1], 1000)
 
-        # There's definitely a more efficent way to compute slope
+        # TODO: There's definitely a more efficent way to compute slope
         # considering the dataset barely changes between iterations.
         # For theil sen, we only need to recompute differences & slopes for the new data point
 
         # TODO: Calculate blob velocity & add scoring?
-
-        logger.debug(f"Slope = {slope:+.3f}")
+        
+        logger.debug(f"Slope {tuple(self.color)} = {slope:+.3f}")
 
         # Threshold slope & update cooking state
         self._cooking.value = slope > TEMP_SLOPE_THRESHOLD
@@ -175,17 +179,18 @@ class Blob:
 
     def draw_blob(self, image):
         """
-        Draw the blob and its centroid on an image\n
+        Draw the blob and its centroid on an image.
+        
         Parameters:
         - image (numpy.ndarray): The image to draw on
 
         Returns (numpy.ndarray): The annotated image
-        """
-        # Detected in this frame
-        if self.lives == BLOB_LIVES:
-            cv2.drawContours(image, [self.contour], -1, tuple(self.color), cv2.FILLED)
-            if self.is_cooking():
-                cv2.drawContours(image, [self.contour], -1, (0,100,255), 2)
-            cv2.circle(image, self.centroid, 1, (0, 0, 255), -1)
+        """        
+        cv2.drawContours(image, [self.contour], -1, tuple(self.color), cv2.FILLED) # Draw blob
+        cv2.circle(image, self.centroid, 1, (0, 0, 255), -1) # Draw centroid
 
+        # Give cooking blobs an orange border
+        if self.is_cooking():
+            cv2.drawContours(image, [self.contour], -1, (0,100,255), 2)
+            
         return image

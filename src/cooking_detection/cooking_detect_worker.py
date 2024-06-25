@@ -63,7 +63,7 @@ def cooking_detect_worker(mem, new, ports, stop, log, errs, cooking_coords):
             else: new.clear()
 
             # Copy frame from shared memory
-            mem.get_lock().acquire(timeout=0.2)
+            if not mem.get_lock().acquire(timeout=0.2): continue
             np.copyto(frame, frame_src)
             mem.get_lock().release()
 
@@ -84,7 +84,8 @@ def cooking_detect_worker(mem, new, ports, stop, log, errs, cooking_coords):
             if len(ports):
                 three_chan = cv2.merge([clip_norm(frame)]*3)
                 for blob in tracked_blobs:
-                    blob.draw_blob(three_chan)
+                    if blob.lives == BLOB_LIVES:
+                        blob.draw_blob(three_chan)
                 monitor.show(three_chan, *ports)
 
         # Add errors to queue
@@ -95,7 +96,8 @@ def cooking_detect_worker(mem, new, ports, stop, log, errs, cooking_coords):
 
     # === Terminate ===
     try:
-        monitor.stop()
+        try: monitor.stop()
+        except UnboundLocalError: pass
         
         try: cooking_coords[:] = []
         except BrokenPipeError: pass
@@ -110,14 +112,16 @@ def cooking_detect_worker(mem, new, ports, stop, log, errs, cooking_coords):
 
 def find_blobs(frame):
     """
-    Find blobs in image\n
+    Find blobs in image
+
     Parameters:
     - frame (numpy.ndarray): The raw, 16-bit thermal image
 
     Returns (list (Blob)): A list of detected blob objects
     """
 
-    # Clip cold pixels and convert to 8-bit
+    # Clip extreme pixel values and convert to 8-bit.
+    # OpenCV doesn't like 16-bit images
     clipped = clip_norm(
         img = frame,
         min_val = temp2raw(TEMP_THRESH_LOW),
@@ -125,6 +129,7 @@ def find_blobs(frame):
     )
 
     # Bilateral filter
+    # Edge-preserving, smoothing filter
     clipped = cv2.bilateralFilter(
         src = clipped,
         d = 5,
@@ -133,6 +138,7 @@ def find_blobs(frame):
     )
 
     # Adaptive threshold
+    # Binarizes image, true for regions of hot pixels
     thresh = cv2.adaptiveThreshold(
         src = clipped,
         maxValue = 255,
@@ -142,7 +148,8 @@ def find_blobs(frame):
         C = 0
     )
 
-    # Close holes
+    # Morphological closing
+    # Closes any holes in the blob
     kernel  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
     closed = cv2.morphologyEx(
         src = thresh,
@@ -152,6 +159,7 @@ def find_blobs(frame):
     )
 
     # Find contours
+    # Gets blob outline
     contours, heirarchy = cv2.findContours(
         image = closed,
         mode = cv2.RETR_EXTERNAL,
@@ -164,7 +172,8 @@ def find_blobs(frame):
 def match_blobs(new_blobs, old_blobs):
     """
     Compare newly extracted blobs to old blobs.\n
-    Prune the list of old blobs and add new blobs to list.\n
+    Prune the list of old blobs and add new blobs to list.
+    
     Parameters:
     - new_blobs (list (Blob)): The list of new blob objects to merge and/or add
     - old_blobs (list (Blob)): The list of old blobs to purge and/or merge with
