@@ -95,7 +95,7 @@ class StateMachine:
         self.livestream_type = ""
 
         # Macro for pausing user detection
-        self.user_detection_enabled = self.user_detect.start_args[1].enabled
+        self.user_detect_ctrl = self.user_detect.start_args[1]
 
         # Helpful lambdas for getting process outputs
         self.hotspots_detected    = lambda: self.purethermal.launcher.hotspot_detected.value
@@ -125,11 +125,11 @@ class StateMachine:
         if self.current_state == STATE_SETUP:
             # Start lepton and load user detection model
             if next_state == STATE_IDLE:
-                if self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL:
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL):
                     self.purethermal.start()
 
                 # Start user detection but disable it
-                self.user_detection_enabled = False
+                self.user_detect_ctrl.enabled = False
                 self.user_detect.start()
 
             # Unrecognized transition
@@ -145,8 +145,9 @@ class StateMachine:
 
             # Start arducam, enable user detection, start cooking detection
             elif next_state == STATE_ACTIVE:
-                self.arducam.start()
-                self.user_detection_enabled = True
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
+                    self.arducam.start()
+                self.user_detect_ctrl.enabled = True
                 self.cooking_detect.start()
 
             # Unrecognized transition
@@ -170,7 +171,7 @@ class StateMachine:
             # Disable user detection, shut down arducam and cooking detection
             elif next_state == STATE_IDLE:
                 self.cooking_detect.stop()
-                self.user_detection_enabled = False
+                self.user_detect_ctrl.enabled = False
                 if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
                     self.arducam.stop()
 
@@ -193,7 +194,7 @@ class StateMachine:
             elif next_state == STATE_IDLE:
                 self.alarm_board.stopAlarm()
                 self.cooking_detect.stop()
-                self.user_detection_enabled = False
+                self.user_detect_ctrl.enabled = False
                 if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
                     self.arducam.stop()
 
