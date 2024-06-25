@@ -125,7 +125,7 @@ class StateMachine:
         if self.current_state == STATE_SETUP:
             # Start lepton and load user detection model
             if next_state == STATE_IDLE:
-                if not self.purethermal.running():
+                if self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL:
                     self.purethermal.start()
 
                 # Start user detection but disable it
@@ -139,7 +139,8 @@ class StateMachine:
         elif self.current_state == STATE_IDLE:
             # Shut down lepton and user detection model
             if next_state == STATE_SETUP:
-                self.purethermal.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL):
+                    self.purethermal.stop()
                 self.user_detect.stop()
 
             # Start arducam, enable user detection, start cooking detection
@@ -157,8 +158,10 @@ class StateMachine:
             if next_state == STATE_SETUP:
                 self.cooking_detect.stop()
                 self.user_detect.stop()
-                self.purethermal.stop()
-                self.arducam.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL):
+                    self.purethermal.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
+                    self.arducam.stop()
 
             # Leave everything running
             elif next_state == STATE_ALARM:
@@ -168,7 +171,8 @@ class StateMachine:
             elif next_state == STATE_IDLE:
                 self.cooking_detect.stop()
                 self.user_detection_enabled = False
-                self.arducam.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
+                    self.arducam.stop()
 
             # Unrecognized transition
             else: self.logger.error("Unrecognized state transition")
@@ -180,15 +184,18 @@ class StateMachine:
                 self.alarm_board.stopAlarm()
                 self.cooking_detect.stop()
                 self.user_detect.stop()
-                self.purethermal.stop()
-                self.arducam.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_THERMAL):
+                    self.purethermal.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
+                    self.arducam.stop()
 
             # Disable user detection, shut down arducam and cooking detection
             elif next_state == STATE_IDLE:
                 self.alarm_board.stopAlarm()
                 self.cooking_detect.stop()
                 self.user_detection_enabled = False
-                self.arducam.stop()
+                if not (self.livestream_active and self.livestream_type == STREAM_TYPE_VISIBLE):
+                    self.arducam.stop()
 
             # Unrecognized transition
             else: self.logger.error("Unrecognized state transition")
