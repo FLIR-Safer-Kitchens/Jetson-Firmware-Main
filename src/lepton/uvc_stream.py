@@ -13,7 +13,11 @@ class QueueStruct(Structure):
 
 
 class PureThermalUVC:
-    """Uses the GroupGets libuvc library to stream raw thermal video from a PureThermal board"""
+    """
+    Uses the GroupGets libuvc library to stream raw thermal video from a PureThermal board
+
+    See https://github.com/groupgets/purethermal1-uvc-capture
+    """
 
     def __init__(self, libuvc_dll):
         # Configure logger
@@ -178,8 +182,7 @@ def py_frame_callback(frame_struct_ptr, queue_struct_ptr):
     h = frame.height
 
     # Check data size (bytes)
-    if frame.data_bytes != 2*(w*h):
-        return None
+    if frame.data_bytes != 2*(w*h): return
 
     # Get a pointer to the array
     array_pointer = cast(frame.data, POINTER(c_uint16*(w*h)))
@@ -193,8 +196,8 @@ def py_frame_callback(frame_struct_ptr, queue_struct_ptr):
     frame_queue = queue_ptr.contents.queue
 
     # Add the frame to the buffer
-    if not frame_queue.full():
-        frame_queue.put(data)
+    try: frame_queue.put(data, block=False)
+    except: pass
 
 # Create pointer to callback function
 FRAME_CALLBACK_PTR = CFUNCTYPE(None, POINTER(uvc_frame), c_void_p)(py_frame_callback)
