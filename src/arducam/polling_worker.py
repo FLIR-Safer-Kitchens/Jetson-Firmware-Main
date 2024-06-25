@@ -17,7 +17,7 @@ def polling_worker(mem, new, ports, stop, log, errs):
 
     Parameters:
     - mem (multiprocessing.Array): Shared memory location of visible image data
-    - new (NewFrameEvent): Master 'new frame' event. Set all child events when a new frame is written
+    - new (NewFrameEvent): Master 'new frame' event. Sets all child events when a new frame is written
     - ports (list (int)): List of UDP ports to stream image data to
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
@@ -90,10 +90,10 @@ def polling_worker(mem, new, ports, stop, log, errs):
                 continue
 
             # Flip frame
+            # TODO: Have the maxrix perform the flipping
             frame = cv2.flip(frame, 0)
 
-            # Undistort frame 
-            # TODO: Have the maxrix preform the flipping
+            # Undistort frame
             frame = cv2.undistort(
                 src=frame, 
                 cameraMatrix=np.array(ARDUCAM_CALIB),
@@ -103,7 +103,7 @@ def polling_worker(mem, new, ports, stop, log, errs):
             )
             
             # Copy data to shared memory
-            mem.get_lock().acquire(timeout=0.5)
+            if not mem.get_lock().acquire(timeout=0.5): continue
             np.copyto(frame_dst, frame)
             mem.get_lock().release()
 
@@ -122,13 +122,13 @@ def polling_worker(mem, new, ports, stop, log, errs):
 
     # === Terminate ===
     try:
+        new.clear() # Invalidate last data
+        
         try: vidcap.release()
         except UnboundLocalError: pass
 
         try: monitor.stop()
         except UnboundLocalError: pass
-
-        new.clear() # Invalidate last data
 
     # Add errors to queue
     except BaseException as err:
@@ -139,7 +139,11 @@ def polling_worker(mem, new, ports, stop, log, errs):
 
 
 def get_arducam_index():
-    """Cross-platform method to find the index of the Arducam camera module"""
+    """
+    Cross-platform method to find the index of the Arducam camera module
+    
+    Returns (int | str | None): Integer camera index or "/dev/videox" string (if found), else None
+    """
 
     if platform.system() == 'Windows':
         # List AV input devices
