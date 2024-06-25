@@ -2,7 +2,7 @@
 
 import numpy as np
 
-# Temp. Conversion Helpers
+# Temp. conversion helpers
 def f2c(f):
 	"""Farenheit to Celsius"""
 	return 5/9*(f - 32)
@@ -12,9 +12,7 @@ def c2f(c):
 	return 9/5*c + 32
 
 
-# Radiometry Conversion Helpers (temp units = C)
-# TODO: verify that these are accurate
-# TODO: Read radiometry app note
+# Radiometry conversion helpers (temp units = C)
 def temp2raw(temp):
 	"""Temperature value (celsius) to 16-bit T-Linear radiometeric value"""
 	return round(100*temp)+27315
@@ -51,8 +49,8 @@ def clip_norm(img, min_val=None, max_val=None):
 
 def hist_equalize(img, clipped=False):
 	"""
-	Performs histogram equalization on an 8-bit image
-	Used to imporve contrast
+	Performs histogram equalization on an 8-bit image.\n
+	Used to improve contrast
 	
 	Parameters:
 	- img (Mat): Image to be equalized

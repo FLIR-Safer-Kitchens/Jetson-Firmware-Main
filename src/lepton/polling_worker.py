@@ -1,6 +1,5 @@
 """Worker process for polling PureThermal"""
 
-from constants import HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME
 from misc.logs import configure_subprocess_log
 from lepton.utils import raw2temp, clip_norm
 from .uvc_windows import PureThermalWindows
@@ -26,6 +25,8 @@ def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
     - stop (multiprocessing.Event): Flag that indicates when to suspend process
     - log (multiprocessing.Queue): Queue to handle log messages
     - errs (multiprocessing.Queue): Queue to dump errors raised by worker
+    - max_temp (multiprocessing.Value (double)): Maximum detected temperature
+    - hotspot (multiprocessing.Value (bool)): Flag to indicate when hotspots have been detected
     """
     # === Setup ===
     try:
@@ -40,7 +41,7 @@ def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
         frame_dst = np.ndarray(shape=RAW_THERMAL_SHAPE, dtype='uint16', buffer=mem.get_obj())
 
         # Create UVC streaming object
-        # TODO: In theory, libuvc should work for windows as well.
+        # TODO: In theory, libuvc should work on windows as well.
         # I just have not had much luck trying to install it
         if platform.system() == "Linux":
             lep = PureThermalUVC(LIBUVC_DLL_PATH)
@@ -69,7 +70,8 @@ def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
         # Timestamp for camera watchdog timer
         last_good_frame = time.time()
 
-        # Applies time-based hysteresis to the hotspot detection flag
+        # Hotspot detection flag
+        # Same as output flag, but needed to declare locally because reasons
         hotspot_detected = HysteresisBool(HOTSPOT_TRIP_TIME, HOTSPOT_RELEASE_TIME)
 
     # Add errors to queue
@@ -94,7 +96,7 @@ def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
             frame = np.flipud(frame)
 
             # Copy frame to shared memory
-            mem.get_lock().acquire(timeout=0.5)
+            if not mem.get_lock().acquire(timeout=0.5): continue
             np.copyto(frame_dst, frame)
             mem.get_lock().release()
 
@@ -124,9 +126,13 @@ def polling_worker(mem, new, ports, stop, log, errs, max_temp, hotspot):
 
     # === Terminate ===
     try:
-        monitor.stop()
-        lep.stop_stream()
         new.clear() # Invalidate last data
+        
+        try: monitor.stop()
+        except UnboundLocalError: pass
+
+        try: lep.stop_stream()
+        except UnboundLocalError: pass
         
     # Add errors to queue
     except BaseException as err:

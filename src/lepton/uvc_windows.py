@@ -9,7 +9,11 @@ import os
 
 
 class PureThermalWindows:
-    """Uses FLIR's python SDK for Lepton to stream raw thermal video from a PureThermal board"""
+    """
+    Uses FLIR's python SDK for Lepton to stream raw thermal video from a PureThermal board.
+    
+    See https://flir.app.box.com/s/1z77k49npyehtz6m3fq1p84hjrzdvjo8
+    """
 
     def __init__(self):
         # === Special imports ===
@@ -110,6 +114,7 @@ class PureThermalWindows:
 def frame_callback(short_array, width, height):
     """
     Callback for new frame
+    
     Parameters:
     - sort_array (np.ndarry): Raw buffer of pixel values
     - width (int): Frame width
