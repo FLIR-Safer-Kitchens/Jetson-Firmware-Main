@@ -5,10 +5,9 @@ import os.path as path
 import sys
 sys.path.append(path.normpath(path.join(path.dirname(path.abspath(__file__)), '..', "src")))
 
-
+from constants import RAW_THERMAL_SHAPE, STREAM_UDP_PORT
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
-from constants import RAW_THERMAL_SHAPE
 from misc.monitor import MonitorClient
 from lepton.utils import clip_norm
 from ctypes import c_uint16
@@ -54,8 +53,11 @@ def main():
     monitor = MonitorClient(12348)
     pt.streaming_ports.append(12348)
 
+    # Use this to test thermal livestreaming
+    pt.streaming_ports.append(STREAM_UDP_PORT)
+
     # Create windows
-    cv2.namedWindow("memory", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("memory",  cv2.WINDOW_NORMAL)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     # Timestamp for debug messages
@@ -84,7 +86,7 @@ def main():
                 new_frame_child.clear()
 
                 # Grab frame from shared memory
-                mem.get_lock().acquire(timeout=0.5)
+                if not mem.get_lock().acquire(timeout=0.5): continue
                 np.copyto(frame, frame_src)
                 mem.get_lock().release()
 

@@ -4,10 +4,10 @@
 import os, sys
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "src")))
 
+from constants import VISIBLE_SHAPE, STREAM_UDP_PORT
 from misc.frame_event import NewFrameEvent
 from multiprocessing import Array, Queue
 from misc.monitor import MonitorClient
-from constants import VISIBLE_SHAPE
 from ctypes import c_uint8
 from misc.logs import *
 import numpy as np
@@ -53,8 +53,11 @@ def main():
     monitor = MonitorClient(12352)
     cam.streaming_ports.append(12352)
 
+    # Use this for testing visible livestreaming
+    cam.streaming_ports.append(STREAM_UDP_PORT)
+
     # Create window to display frame
-    cv2.namedWindow("memory", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("memory",  cv2.WINDOW_NORMAL)
     cv2.namedWindow("monitor", cv2.WINDOW_NORMAL)
 
     try:
@@ -81,7 +84,7 @@ def main():
                 new_frame_child.clear()
 
                 # Copy frame from shared memory
-                mem.get_lock().acquire(timeout=0.5)
+                if not mem.get_lock().acquire(timeout=0.5): continue
                 np.copyto(frame, frame_src)
                 mem.get_lock().release()
 
