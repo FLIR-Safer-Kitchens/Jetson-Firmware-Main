@@ -170,7 +170,7 @@ def main():
             if ret: cv2.imshow("Lepton View", monitor_frame)
 
             # Delay
-            if cv2.waitKey(50) ^ 0xff == ord('q'):
+            if cv2.waitKey(50) & 0xFF == ord('q'):
                 raise KeyboardInterrupt
 
     except KeyboardInterrupt:
