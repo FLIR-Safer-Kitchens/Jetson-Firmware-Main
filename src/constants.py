@@ -116,6 +116,9 @@ BLOB_HISTORY_RATE = 2.0
 BLOB_HISTORY_DEPTH = 30 
 """(int) Maximum number of history samples to keep"""
 
+SLOPE_MAX_COUNT = 900
+"""(int) Maximum number of pairwise slopes to consider for the Theil-Sen estimator.\n\n Should be >= BLOB_HISTORY_DEPTH*(BLOB_HISTORY_DEPTH-1) if you don't want random sampling"""
+
 
 # Cooking detection hysteresis
 COOKING_TRIP_TIME = 10 

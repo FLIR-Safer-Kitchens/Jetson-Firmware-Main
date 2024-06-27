@@ -2,7 +2,7 @@
 
 from misc.hysteresis import HysteresisBool
 from lepton.utils import raw2temp
-from .theil_sen import theil_sen
+from .theil_sen import TheilSen
 from constants import *
 import numpy as np
 import time
@@ -65,6 +65,9 @@ class Blob:
         # Flag to indicate when a new point is added to history
         self.new_data_flag = False
 
+        # Slope estimator object
+        self.slope_est = TheilSen(BLOB_HISTORY_DEPTH, SLOPE_MAX_COUNT)
+
 
     def compare(self, other):
         """
@@ -123,6 +126,7 @@ class Blob:
         new.color          = old.color
         new.first_detected = old.first_detected
         new.new_data_flag  = old.new_data_flag
+        new.slope_est      = old.slope_est
 
         # Enforce history sample rate
         dt = new.history[-1]["timestamp"] - old.history[-1]["timestamp"]
@@ -148,31 +152,28 @@ class Blob:
             return self._cooking.value
         else: self.new_data_flag = False
 
-        # Collect temperature history
-        temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
-        temp_history = np.array(temp_history)
+        # Grab the newest sample and add it to  the estimator
+        new_sample = self.history[-1]
+        self.slope_est.add_point(new_sample["timestamp"], new_sample["temp"])
 
         # Log history to CSV
         # if time.time() - self.first_detected > 10:
+        #     temp_history = [(h["timestamp"], h["temp"]) for h in self.history]
+        #     temp_history = np.array(temp_history)
+
         #     filename = f"blob_history_" + "_".join([str(c) for c in self.color]) + ".csv"
         #     np.savetxt(filename, temp_history, delimiter = ",")
 
         # Not enough samples to make a prediction yet
-        if temp_history.shape[0] < BLOB_HISTORY_DEPTH:
+        if not self.slope_est.full():
             return False
 
-        # Find slope using Theil-Sen estimator
-        slope = theil_sen(temp_history[:,0], temp_history[:,1], 1000)
-
-        # TODO: There's definitely a more efficent way to compute slope
-        # considering the dataset barely changes between iterations.
-        # For theil sen, we only need to recompute differences & slopes for the new data point
-
-        # TODO: Calculate blob velocity & add scoring?
-        
+        # Find the slope using the Theil-Sen estimator
+        slope = self.slope_est.get_estimate()
         logger.debug(f"Slope {tuple(self.color)} = {slope:+.3f}")
-
+        
         # Threshold slope & update cooking state
+        # TODO: Calculate blob velocity & add scoring?
         self._cooking.value = slope > TEMP_SLOPE_THRESHOLD
         return self._cooking.value
 
