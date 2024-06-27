@@ -49,11 +49,11 @@ class TheilSenPoint:
 class TheilSen:
     """An incremental implementation of the Theil-Sen slope estimator"""
 
-    def __init__(self, n_points, max_pairs=1000):
+    def __init__(self, n_points, max_pairs=None):
         """
         Parameters:
         - n_points (int): The maximum number of points to retain (queue size)
-        - max_pairs (int): Maximum number of pairwise slopes to consider. If max_pairs < ~n^2/2, the slopes will be randomly sampled
+        - max_pairs (int | None): Maximum number of pairwise slopes to consider; will use random sampling if exceded. If not specified, never use random sampling
         """
         self._max_points = n_points
         self._max_pairs = max_pairs
@@ -98,7 +98,7 @@ class TheilSen:
             idx += count
 
         # Randomly sample slopes if there are too many
-        if len(slopes) > self._max_pairs:
+        if (self._max_pairs != None) and (len(slopes) > self._max_pairs):
             np.random.shuffle(slopes)
             slopes = slopes[:self._max_pairs]
 

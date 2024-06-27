@@ -66,7 +66,7 @@ class Blob:
         self.new_data_flag = False
 
         # Slope estimator object
-        self.slope_est = TheilSen(BLOB_HISTORY_DEPTH, SLOPE_MAX_COUNT)
+        self.slope_est = TheilSen(BLOB_HISTORY_DEPTH, SLOPE_EST_MAX_POINTS)
 
 
     def compare(self, other):
