@@ -89,29 +89,28 @@ def polling_worker(mem, new, ports, stop, log, errs):
                 assert (time.time() - last_good_frame) < ARDUCAM_TIMEOUT, "Camera connection timed out"
                 continue
 
-            # Flip frame
-            # TODO: Have the maxrix perform the flipping
-            frame = cv2.flip(frame, 0)
-
             # Undistort frame
-            frame = cv2.undistort(
+            # Copies data to shared memory
+            if not mem.get_lock().acquire(timeout=0.5): continue
+            cv2.undistort(
                 src=frame, 
+                dst=frame_dst,
                 cameraMatrix=np.array(ARDUCAM_CALIB),
-                distCoeffs=np.array(ARDUCAM_DIST), 
-                dst=frame_dst, 
+                distCoeffs=np.array(ARDUCAM_DIST),
                 newCameraMatrix=np.array(ARDUCAM_NEW_CAM)
             )
-            
-            # Copy data to shared memory
-            if not mem.get_lock().acquire(timeout=0.5): continue
-            np.copyto(frame_dst, frame)
             mem.get_lock().release()
 
             # Set new frame flag
             new.set()
 
-            # Stream data over UDP
             if len(ports):
+                # Copy data back to frame
+                if not mem.get_lock().acquire(timeout=0.5): continue
+                np.copyto(frame, frame_dst)
+                mem.get_lock().release()
+
+                # Stream data over UDP
                 monitor.show(frame, *ports)
 
         # Add errors to queue
